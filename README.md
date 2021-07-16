@@ -25,8 +25,21 @@ int main() {
     yash.addCommand("gpio", "GPIO read/write", [&](const auto& args) { gpio(args); });
 
     while (true)
-        yash.setCharacter(getchar());
+        yash.setCharacter(getch());
 
     return 0;
 }
+```
+
+Output:
+
+```
+$ help
+gpio  GPIO read/write
+i2c   I2C read/write
+$ i2c write 0xde 0xad 0xbe 0xef
+i2c command called with 6 args
+$ gpio write PA7 0
+gpio command called with 4 args
+$ 
 ```

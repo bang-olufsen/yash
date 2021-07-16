@@ -22,3 +22,13 @@ ExternalProject_Add(
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
 )
+
+ExternalProject_Add(
+    conioFunctions
+    GIT_REPOSITORY https://github.com/yogesh-hackx/conioFunctions
+    GIT_TAG 1f57ea84d6e5a0ff5c0624c2718c3535cc74738e
+    SOURCE_DIR ../src/external/conioFunctions
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+)

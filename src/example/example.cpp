@@ -1,4 +1,7 @@
 // Copyright 2021 - Bang & Olufsen a/s
+#include <stdlib.h>
+#include <con.h>
+
 #include <Yash.h>
 
 void i2c(const std::vector<std::string>& args) {
@@ -17,7 +20,7 @@ int main() {
     yash.addCommand("gpio", "GPIO read/write", [&](const auto& args) { gpio(args); });
 
     while (true)
-        yash.setCharacter(getchar());
+        yash.setCharacter(getch());
 
     return 0;
 }

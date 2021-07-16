@@ -187,7 +187,7 @@ private:
     {
         std::size_t oldPosition = 0, position = 0;
 
-        // Trim trailng whitespace to not get empty arguments
+        // Trim trailing whitespace to not get empty arguments
         auto trail { command.find_last_not_of(' ') };
         command = command.substr(0, trail + 1);
 
@@ -209,9 +209,9 @@ private:
     static constexpr const char* s_clearCharacter = "\033[1D \033[1D";
     std::map<std::string, YashFunction> m_functions;
     std::map<std::string, std::string> m_descriptions;
+    std::vector<std::string>::const_iterator m_commandsIndex;
     std::vector<std::string> m_commands;
     std::vector<std::string> m_args;
-    decltype(m_commands)::const_iterator m_commandsIndex;
     std::string m_command;
     std::string m_prompt;
     YashPrint m_printFunction;
