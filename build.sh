@@ -4,7 +4,7 @@ set -e
 CMAKE_ARGS="-DBUILD_EXTERNAL=1 -DCMAKE_TOOLCHAIN_FILE=cmake/gcc.cmake"
 
 if [ "$1" = "example" ]; then
-  CMAKE_ARGS="$CMAKE_ARGS -DBUILD_EXAMPLE=1"
+  CMAKE_ARGS="$CMAKE_ARGS -DBUILD_EXAMPLE=1 -DBUILD_TESTING=0"
 fi
 
 mkdir -p .build-external; pushd .build-external

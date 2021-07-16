@@ -31,7 +31,7 @@ int main() {
 }
 ```
 
-Output:
+Output from the example:
 
 ```
 $ help
