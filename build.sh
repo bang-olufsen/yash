@@ -1,8 +1,10 @@
 #!/bin/bash
 set -e
 
+CMAKE_ARGS="-DBUILD_TEST=1"
+
 if [ "$1" = "example" ]; then
-  CMAKE_ARGS="-DBUILD_EXAMPLE=1 -DBUILD_TESTING=0"
+  CMAKE_ARGS="-DBUILD_EXAMPLE=1"
 fi
 
 mkdir -p .build-external; pushd .build-external

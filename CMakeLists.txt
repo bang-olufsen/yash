@@ -9,7 +9,7 @@ if (BUILD_EXAMPLE)
     target_include_directories(${PROJECT_NAME}-example PUBLIC include src/external/conioFunctions)
 endif()
 
-if (BUILD_TESTING)
+if (BUILD_TEST)
     add_subdirectory(src)
     add_subdirectory(test)
 endif()
