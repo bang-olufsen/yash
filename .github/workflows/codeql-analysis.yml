@@ -64,9 +64,7 @@ jobs:
     #    uses a compiled language
 
     - run: |
-      mkdir -p .build; cd .build
-      cmake -DBUILD_EXAMPLE=1 -DBUILD_TESTING=0 -DCMAKE_TOOLCHAIN_FILE=cmake/gcc.cmake ..
-      make
+      mkdir -p .build; cd .build; cmake -DBUILD_EXAMPLE=1 -DBUILD_TESTING=0 -DCMAKE_TOOLCHAIN_FILE=cmake/gcc.cmake ..; make
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
