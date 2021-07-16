@@ -1,0 +1,29 @@
+name: build
+
+env:
+  GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN }}
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  github:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Build
+      run: |
+        sudo apt-get install -qq lcov libboost-test-dev
+        ./build.sh coverage
+    - name: Coveralls
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: .build-x86/coverage.info
