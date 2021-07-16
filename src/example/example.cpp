@@ -1,10 +1,4 @@
-# Yash - Yet Another Shell
-
-Yash is a C++11 header-only minimal shell for embedded devices.
-
-It has been created as a serial port shell but can be used for other interfaces as well by using the `setPrint()` function. The prompt can be customized with the `setPrompt()` function and commands are added using `addCommand()`. An example can be seen below.
-
-```cpp
+// Copyright 2021 - Bang & Olufsen a/s
 #include <Yash.h>
 
 void i2c(const std::vector<std::string>& args) {
@@ -27,4 +21,3 @@ int main() {
 
     return 0;
 }
-```
