@@ -7,7 +7,7 @@ make -j "$(nproc)"
 popd
 
 mkdir -p .build-x86; pushd .build-x86
-cmake -DBUILD_EXTERNAL=1 -DCMAKE_TOOLCHAIN_FILE=cmake/gcc.cmake ..;
+cmake -DBUILD_EXTERNAL=1 -DBUILD_EXAMPLE=1 -DCMAKE_TOOLCHAIN_FILE=cmake/gcc.cmake ..;
 make -j "$(nproc)"
 
 if [ "$1" = "coverage" ]; then

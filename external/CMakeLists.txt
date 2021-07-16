@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.1)
 ExternalProject_Add(
     turtle
     GIT_REPOSITORY https://github.com/mat007/turtle
-    GIT_TAG v1.3.2
+    GIT_TAG bfd1701fcbbb77258ce82dec5a755ff969cbadd3
     SOURCE_DIR ../src/external/turtle
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
