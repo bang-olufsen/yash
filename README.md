@@ -1,5 +1,7 @@
 # Yash - Yet Another Shell
 
+[![build](https://github.com/bang-olufsen/yash/actions/workflows/build.yml/badge.svg)](https://github.com/bang-olufsen/yash/actions/workflows/build.yml) [![codefactor](https://www.codefactor.io/repository/github/bang-olufsen/yash/badge)](https://www.codefactor.io/repository/github/bang-olufsen/yash)
+
 Yash is a C++11 header-only minimal shell for embedded devices.
 
 It has been created as a serial port shell but can be used for other interfaces as well by using the `setPrint()` function. The prompt can be customized with the `setPrompt()` function and commands are added using `addCommand()`. An example can be seen below.
