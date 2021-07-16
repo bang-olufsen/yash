@@ -1,6 +1,6 @@
 # Yash - Yet Another Shell
 
-[![build](https://github.com/bang-olufsen/yash/actions/workflows/build.yml/badge.svg)](https://github.com/bang-olufsen/yash/actions/workflows/build.yml) [![codefactor](https://www.codefactor.io/repository/github/bang-olufsen/yash/badge)](https://www.codefactor.io/repository/github/bang-olufsen/yash)
+[![build](https://github.com/bang-olufsen/yash/actions/workflows/build.yml/badge.svg)](https://github.com/bang-olufsen/yash/actions/workflows/build.yml) [![codefactor](https://www.codefactor.io/repository/github/bang-olufsen/yash/badge)](https://www.codefactor.io/repository/github/bang-olufsen/yash) [![license](https://img.shields.io/badge/license-MIT_License-blue.svg?style=flat)](LICENSE)
 
 Yash is a C++11 header-only minimal shell for embedded devices.
 
