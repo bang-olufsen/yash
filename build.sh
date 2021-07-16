@@ -1,13 +1,19 @@
 #!/bin/bash
 set -e
 
+CMAKE_ARGS="-DBUILD_EXTERNAL=1 -DCMAKE_TOOLCHAIN_FILE=cmake/gcc.cmake"
+
+if [ "$1" = "example" ]; then
+  CMAKE_ARGS="$CMAKE_ARGS -DBUILD_EXAMPLE=1"
+fi
+
 mkdir -p .build-external; pushd .build-external
 cmake ../external
 make -j "$(nproc)"
 popd
 
 mkdir -p .build-x86; pushd .build-x86
-cmake -DBUILD_EXTERNAL=1 -DCMAKE_TOOLCHAIN_FILE=cmake/gcc.cmake ..;
+cmake "$CMAKE_ARGS" ..
 make -j "$(nproc)"
 
 if [ "$1" = "coverage" ]; then
