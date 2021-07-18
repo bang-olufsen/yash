@@ -4,9 +4,7 @@
 
 ![](https://raw.githubusercontent.com/bang-olufsen/yash/main/src/example/example.gif)
 
-Yash is a C++11 header-only minimal shell for embedded devices.
-
-It has been created as a serial port shell but can be used for other interfaces as well by using `setPrint()`. The prompt can be customized with `setPrompt()` and commands are added using `addCommand()`. An example can be seen below.
+Yash is a C++11 header-only minimal shell for embedded devices. It was created as a serial port shell but can be used for other interfaces as well by using `setPrint()`. The prompt can be customized with `setPrompt()` and commands are added using `addCommand()`. The history size can be adjusted by defining `YASH_HISTORY_SIZE` (default 10). An example can be seen below.
 
 ```cpp
 #include <Yash.h>
