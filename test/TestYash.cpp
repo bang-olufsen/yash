@@ -38,6 +38,7 @@ TEST_CASE("Yash test")
     std::string prompt = "$ ";
     std::string command = "i2c";
     std::string description = "i2c read/write functions";
+    std::map<std::string, std::string> descriptions {{command, description}};
 
     yash.setPrint(print);
     yash.setPrompt(prompt);
@@ -77,6 +78,17 @@ TEST_CASE("Yash test")
 
         for (char& character : testCommand)
             yash.setCharacter(character);
+    }
+
+    SECTION("Test setCharacter function with 'i' + TAB input")
+    {
+        MOCK_EXPECT(print).once().with("i");
+        yash.setCharacter('i');
+
+        MOCK_EXPECT(print).once().with("2");
+        MOCK_EXPECT(print).once().with("c");
+        MOCK_EXPECT(print).once().with(" ");
+        yash.setCharacter(Yash::Yash::Tab);
     }
 
     SECTION("Test setCharacter function with 'i2c' input")
@@ -249,26 +261,19 @@ TEST_CASE("Yash test")
     SECTION("Test printCommands")
     {
         MOCK_EXPECT(print).once().with(command + "  " + description + "\r\n");
-        yash.printCommands();
-    }
-
-    SECTION("Test printCommands on empty command")
-    {
-        MOCK_EXPECT(print).once().with(command + "  " + description + "\r\n");
-        yash.printCommands();
+        yash.printCommands(descriptions);
     }
 
     SECTION("Test printCommands alignment")
     {
-        std::string secondCommand = "proximity";
-        std::string secondDescription = "proximity functions";
-        yash.addCommand(secondCommand, secondDescription, &i2c);
-        CHECK(yash.m_descriptions.size() == 2);
+        std::string secondCommand = "info";
+        std::string secondDescription = "System info";
+        descriptions.emplace(secondCommand, secondDescription);
 
         mock::sequence seq;
-        MOCK_EXPECT(print).once().with(command + "        " + description + "\r\n").in(seq);
+        MOCK_EXPECT(print).once().with(command + "   " + description + "\r\n").in(seq);
         MOCK_EXPECT(print).once().with(secondCommand + "  " + secondDescription + "\r\n").in(seq);
-        yash.printCommands();
+        yash.printCommands(descriptions);
     }
 
     mock::verify();
