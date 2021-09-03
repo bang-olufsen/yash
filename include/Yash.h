@@ -94,9 +94,20 @@ public:
             break;
         case Del:
         case Backspace:
-            if (m_command.length() > 0) {
+            if (m_command.length()) {
                 print(s_clearCharacter);
                 m_command.erase(m_command.length() - 1);
+            }
+            break;
+        case Tab:
+            if (m_command.length()) {
+                for (auto& [command, function] : m_functions) {
+                    std::ignore = function;
+                    if (!command.compare(0, m_command.length(), m_command)) {
+                        m_command = command + ' ';
+                        printCommand();
+                    }
+                }
             }
             break;
         case Esc:
@@ -135,6 +146,7 @@ private:
     enum Character {
         EndOfText = 3,
         Backspace = 8,
+        Tab = 9,
         Esc = 27,
         Up = 65,
         Down = 66,
