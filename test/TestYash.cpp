@@ -82,12 +82,12 @@ TEST_CASE("Yash test")
 
     SECTION("Test setCharacter function with 'i' + TAB input")
     {
-        MOCK_EXPECT(print).once().with("i");
+        mock::sequence seq;
+        MOCK_EXPECT(print).once().in(seq).with("i");
+        MOCK_EXPECT(print).once().in(seq).with(mock::any);
+        MOCK_EXPECT(print).once().in(seq).with(prompt.c_str());
+        MOCK_EXPECT(print).once().in(seq).with("i2c ");
         yash.setCharacter('i');
-
-        MOCK_EXPECT(print).once().with("2");
-        MOCK_EXPECT(print).once().with("c");
-        MOCK_EXPECT(print).once().with(" ");
         yash.setCharacter(Yash::Yash::Tab);
     }
 
