@@ -38,7 +38,6 @@ TEST_CASE("Yash test")
     std::string prompt = "$ ";
     std::string command = "i2c";
     std::string description = "i2c read/write functions";
-    std::map<std::string, std::string> descriptions {{command, description}};
 
     yash.setPrint(print);
     yash.setPrompt(prompt);
