@@ -189,7 +189,7 @@ private:
         print(m_command.c_str());
     }
 
-    void printCommands(std::map<std::string, std::string> &descriptions)
+    void printCommands(const std::map<std::string, std::string> &descriptions)
     {
         size_t maxCommandSize { std::accumulate(begin(descriptions), end(descriptions), 0u, [](size_t max, const auto& desc) {
             return std::max(max, desc.first.size());
