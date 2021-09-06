@@ -79,6 +79,35 @@ TEST_CASE("Yash test")
             yash.setCharacter(character);
     }
 
+    SECTION("Test setCharacter function with 'i' + TAB input")
+    {
+        mock::sequence seq;
+        MOCK_EXPECT(print).once().in(seq).with("i");
+        MOCK_EXPECT(print).once().in(seq).with(mock::any);
+        MOCK_EXPECT(print).once().in(seq).with(prompt.c_str());
+        MOCK_EXPECT(print).once().in(seq).with("i2c ");
+        yash.setCharacter('i');
+        yash.setCharacter(Yash::Yash::Tab);
+    }
+
+    SECTION("Test setCharacter function with 'i' + TAB input and two similar commands")
+    {
+        std::string secondCommand = "info";
+        std::string secondDescription = "System info";
+        yash.addCommand(secondCommand, secondDescription, nullptr);
+
+        mock::sequence seq;
+        MOCK_EXPECT(print).once().in(seq).with("i");
+        MOCK_EXPECT(print).once().in(seq).with(mock::any);
+        MOCK_EXPECT(print).once().in(seq).with(command + "   " + description + "\r\n");
+        MOCK_EXPECT(print).once().in(seq).with(secondCommand + "  " + secondDescription + "\r\n");
+        MOCK_EXPECT(print).once().in(seq).with(mock::any);
+        MOCK_EXPECT(print).once().in(seq).with(prompt.c_str());
+        MOCK_EXPECT(print).once().in(seq).with("i");
+        yash.setCharacter('i');
+        yash.setCharacter(Yash::Yash::Tab);
+    }
+
     SECTION("Test setCharacter function with 'i2c' input")
     {
         std::string testCommand = "i2c\n";
@@ -244,31 +273,6 @@ TEST_CASE("Yash test")
         yash.removeCommand(command);
         CHECK(yash.m_functions.empty());
         CHECK(yash.m_descriptions.empty());
-    }
-
-    SECTION("Test printCommands")
-    {
-        MOCK_EXPECT(print).once().with(command + "  " + description + "\r\n");
-        yash.printCommands();
-    }
-
-    SECTION("Test printCommands on empty command")
-    {
-        MOCK_EXPECT(print).once().with(command + "  " + description + "\r\n");
-        yash.printCommands();
-    }
-
-    SECTION("Test printCommands alignment")
-    {
-        std::string secondCommand = "proximity";
-        std::string secondDescription = "proximity functions";
-        yash.addCommand(secondCommand, secondDescription, &i2c);
-        CHECK(yash.m_descriptions.size() == 2);
-
-        mock::sequence seq;
-        MOCK_EXPECT(print).once().with(command + "        " + description + "\r\n").in(seq);
-        MOCK_EXPECT(print).once().with(secondCommand + "  " + secondDescription + "\r\n").in(seq);
-        yash.printCommands();
     }
 
     mock::verify();

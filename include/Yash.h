@@ -76,7 +76,7 @@ public:
         case '\n':
         case '\r':
             print("\r\n");
-            if (m_command.length() > 0) {
+            if (m_command.length()) {
                 runCommand(m_command);
                 m_commands.push_back(m_command);
 
@@ -94,9 +94,27 @@ public:
             break;
         case Del:
         case Backspace:
-            if (m_command.length() > 0) {
+            if (m_command.length()) {
                 print(s_clearCharacter);
                 m_command.erase(m_command.length() - 1);
+            }
+            break;
+        case Tab:
+            if (m_command.length()) {
+                std::map<std::string, std::string> descriptions;
+                for (auto& [command, description] : m_descriptions) {
+                    if (!command.compare(0, m_command.length(), m_command))
+                        descriptions.emplace(command, description);
+                }
+
+                if (descriptions.size() == 1) {
+                    m_command = descriptions.begin()->first + ' ';
+                    printCommand();
+                } else if (descriptions.size() > 1) {
+                    print(s_clearLine);
+                    printCommands(descriptions);
+                    printCommand();
+                }
             }
             break;
         case Esc:
@@ -135,6 +153,7 @@ private:
     enum Character {
         EndOfText = 3,
         Backspace = 8,
+        Tab = 9,
         Esc = 27,
         Up = 65,
         Down = 66,
@@ -155,7 +174,7 @@ private:
         if (!m_args.empty()) {
             auto it = m_functions.find(m_args.front());
             if (it == m_functions.end())
-                printCommands();
+                printCommands(m_descriptions);
             else
                 it->second(m_args);
         }
@@ -170,13 +189,13 @@ private:
         print(m_command.c_str());
     }
 
-    void printCommands()
+    void printCommands(const std::map<std::string, std::string> &descriptions)
     {
-        size_t maxCommandSize { std::accumulate(begin(m_descriptions), end(m_descriptions), 0u, [](size_t max, const auto& desc) {
+        size_t maxCommandSize { std::accumulate(begin(descriptions), end(descriptions), 0u, [](size_t max, const auto& desc) {
             return std::max(max, desc.first.size());
         }) };
 
-        for (auto const& desc : m_descriptions) {
+        for (auto const& desc : descriptions) {
             std::string alignment((maxCommandSize + 2) - desc.first.size(), ' ');
             auto description { desc.first + alignment + desc.second + "\r\n" };
             print(description.c_str());
