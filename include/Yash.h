@@ -21,7 +21,8 @@ using YashFunction = std::function<void(const std::vector<std::string>&)>;
 class Yash {
 public:
     Yash()
-        : m_commandsIndex(m_commands.begin())
+        : m_commands{}
+        , m_commandsIndex(m_commands.begin())
         , m_printFunction(::printf)
     {
     }
@@ -228,8 +229,8 @@ private:
     static constexpr const char* s_clearCharacter = "\033[1D \033[1D";
     std::map<std::string, YashFunction> m_functions;
     std::map<std::string, std::string> m_descriptions;
-    std::vector<std::string>::const_iterator m_commandsIndex;
     std::vector<std::string> m_commands;
+    std::vector<std::string>::const_iterator m_commandsIndex;
     std::vector<std::string> m_args;
     std::string m_command;
     std::string m_prompt;
