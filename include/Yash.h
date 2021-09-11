@@ -199,9 +199,12 @@ private:
                     token = std::strtok(nullptr, s_commandDelimiter);
                 }
                 function(m_args);
+                print(m_prompt.c_str());
+                return;
             }
         }
 
+        printCommands(m_descriptions);
         print(m_prompt.c_str());
     }
 
