@@ -3,6 +3,7 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 #include <functional>
 #include <map>
 #include <numeric>
@@ -186,16 +187,19 @@ private:
         LeftBracket
     };
 
-    void runCommand(const std::string& command)
+    void runCommand(const std::string& inputCommand)
     {
-        commandToArgs(command, m_args);
-
-        if (!m_args.empty()) {
-            auto it = m_functions.find(m_args.front());
-            if (it == m_functions.end())
-                printCommands(m_descriptions);
-            else
-                it->second(m_args);
+        for (auto& [command, function] : m_functions) {
+            std::ignore = function;
+            if (!inputCommand.compare(0, command.length(), command)) {
+                auto args = inputCommand.substr(command.length());
+                char *token = std::strtok(args.data(), s_commandDelimiter);
+                while (token) {
+                    m_args.push_back(token);
+                    token = std::strtok(nullptr, s_commandDelimiter);
+                }
+                function(m_args);
+            }
         }
 
         print(m_prompt.c_str());
@@ -218,27 +222,6 @@ private:
             std::string alignment((maxCommandSize + 2) - desc.first.size(), ' ');
             auto description { desc.first + alignment + desc.second + "\r\n" };
             print(description.c_str());
-        }
-    }
-
-    void commandToArgs(std::string command, std::vector<std::string>& args)
-    {
-        std::size_t oldPosition = 0, position = 0;
-
-        // Trim trailing whitespace to not get empty arguments
-        auto trail { command.find_last_not_of(' ') };
-        command = command.substr(0, trail + 1);
-
-        args.clear();
-        while (true) {
-            position = command.find(' ', oldPosition);
-            if (position == std::string::npos) {
-                args.push_back(command.substr(oldPosition));
-                break;
-            }
-
-            args.push_back(command.substr(oldPosition, position - oldPosition));
-            oldPosition = position + 1;
         }
     }
 
