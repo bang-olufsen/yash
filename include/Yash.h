@@ -57,16 +57,34 @@ public:
     /// @param function A YashFunction to be called when the command is executed
     void addCommand(const std::string& command, const std::string& description, YashFunction function)
     {
-        m_functions.emplace(command, function);
-        m_descriptions.emplace(command, description);
+        addCommand(command, "", description, function);
+    }
+
+    /// @brief Adds a command with a sub command to the shell
+    /// @param command A string with the name of the command
+    /// @param command A string with the name of the sub command
+    /// @param description A string with the command description
+    /// @param function A YashFunction to be called when the command is executed
+    void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function)
+    {
+        m_functions.emplace(command + s_commandDelimiter + subCommand, function);
+        m_descriptions.emplace(command + s_commandDelimiter + subCommand, description);
     }
 
     /// @brief Removes a command from the shell
     /// @param command A string with the name of the command
     void removeCommand(const std::string& command)
     {
-        m_functions.erase(command);
-        m_descriptions.erase(command);
+        removeCommand(command, "");
+    }
+
+    /// @brief Removes a command from the shell
+    /// @param command A string with the name of the command
+    /// @param command A string with the name of the sub command
+    void removeCommand(const std::string& command, const std::string& subCommand)
+    {
+        m_functions.erase(command + s_commandDelimiter + subCommand);
+        m_descriptions.erase(command + s_commandDelimiter + subCommand);
     }
 
     /// @brief Sets a received character on the shell
@@ -227,6 +245,7 @@ private:
     static constexpr const char* s_clearLine = "\033[2K\033[100D";
     static constexpr const char* s_clearScreen = "\033[2J\x1B[H";
     static constexpr const char* s_clearCharacter = "\033[1D \033[1D";
+    static constexpr const char* s_commandDelimiter = " ";
     std::map<std::string, YashFunction> m_functions;
     std::map<std::string, std::string> m_descriptions;
     std::vector<std::string> m_commands;
