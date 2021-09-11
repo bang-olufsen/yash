@@ -63,13 +63,14 @@ public:
 
     /// @brief Adds a command with a sub command to the shell
     /// @param command A string with the name of the command
-    /// @param command A string with the name of the sub command
+    /// @param subCommand A string with the name of the sub command
     /// @param description A string with the command description
     /// @param function A YashFunction to be called when the command is executed
     void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function)
     {
-        m_functions.emplace(command + s_commandDelimiter + subCommand, function);
-        m_descriptions.emplace(command + s_commandDelimiter + subCommand, description);
+        auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
+        m_functions.emplace(fullCommand, function);
+        m_descriptions.emplace(fullCommand, description);
     }
 
     /// @brief Removes a command from the shell
@@ -81,11 +82,12 @@ public:
 
     /// @brief Removes a command from the shell
     /// @param command A string with the name of the command
-    /// @param command A string with the name of the sub command
+    /// @param subCommand A string with the name of the sub command
     void removeCommand(const std::string& command, const std::string& subCommand)
     {
-        m_functions.erase(command + s_commandDelimiter + subCommand);
-        m_descriptions.erase(command + s_commandDelimiter + subCommand);
+        auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
+        m_functions.erase(fullCommand);
+        m_descriptions.erase(fullCommand);
     }
 
     /// @brief Sets a received character on the shell
@@ -97,7 +99,7 @@ public:
         case '\r':
             print("\r\n");
             if (m_command.length()) {
-                runCommand(m_command);
+                runCommand();
                 m_commands.push_back(m_command);
 
                 if (m_commands.size() > YASH_HISTORY_SIZE)
@@ -120,22 +122,8 @@ public:
             }
             break;
         case Tab:
-            if (m_command.length()) {
-                std::map<std::string, std::string> descriptions;
-                for (auto& [command, description] : m_descriptions) {
-                    if (!command.compare(0, m_command.length(), m_command))
-                        descriptions.emplace(command, description);
-                }
-
-                if (descriptions.size() == 1) {
-                    m_command = descriptions.begin()->first + ' ';
-                    printCommand();
-                } else if (descriptions.size() > 1) {
-                    print(s_clearLine);
-                    printCommands(descriptions);
-                    printCommand();
-                }
-            }
+            if (m_command.length())
+                printDescriptions();
             break;
         case Esc:
             m_ctrlState = CtrlState::Esc;
@@ -187,12 +175,12 @@ private:
         LeftBracket
     };
 
-    void runCommand(const std::string& inputCommand)
+    void runCommand()
     {
         for (auto& [command, function] : m_functions) {
             std::ignore = function;
-            if (!inputCommand.compare(0, command.length(), command)) {
-                auto args = inputCommand.substr(command.length());
+            if (!m_command.compare(0, command.length(), command)) {
+                auto args = m_command.substr(command.length());
                 char *token = std::strtok(args.data(), s_commandDelimiter);
                 while (token) {
                     m_args.push_back(token);
@@ -204,8 +192,7 @@ private:
             }
         }
 
-        printCommands(m_descriptions);
-        print(m_prompt.c_str());
+        printDescriptions();
     }
 
     void printCommand()
@@ -225,6 +212,33 @@ private:
             std::string alignment((maxCommandSize + 2) - desc.first.size(), ' ');
             auto description { desc.first + alignment + desc.second + "\r\n" };
             print(description.c_str());
+        }
+    }
+
+    void printDescriptions()
+    {
+        std::map<std::string, std::string> descriptions;
+        for (auto& [command, description] : m_descriptions) {
+            if (!command.compare(0, m_command.length(), m_command))
+                descriptions.emplace(command, description);
+        }
+
+        if (descriptions.size() == 1) {
+            m_command = descriptions.begin()->first + ' ';
+            printCommand();
+        } else {
+            if (descriptions.empty()) {
+                for (auto& [command, description] : m_descriptions) {
+                    auto position = command.find(s_commandDelimiter);
+                    if (position != std::string::npos)
+                        descriptions.emplace(command.substr(0, position), "Commands");
+                    else
+                        descriptions.emplace(command, description);
+                }
+            }
+            print(s_clearLine);
+            printCommands(descriptions);
+            descriptions.empty() ? print(m_prompt.c_str()) : printCommand();
         }
     }
 
