@@ -122,8 +122,8 @@ public:
             }
             break;
         case Tab:
-            if (m_command.length())
-                printDescriptions();
+            printDescriptions(true);
+            printCommand();
             break;
         case Esc:
             m_ctrlState = CtrlState::Esc;
@@ -177,6 +177,8 @@ private:
 
     void runCommand()
     {
+        printf("CMD: %s\n", m_command.c_str());
+        m_args.clear();
         for (auto& [command, function] : m_functions) {
             std::ignore = function;
             if (!m_command.compare(0, command.length(), command)) {
@@ -193,6 +195,7 @@ private:
         }
 
         printDescriptions();
+        print(m_prompt.c_str());
     }
 
     void printCommand()
@@ -215,19 +218,22 @@ private:
         }
     }
 
-    void printDescriptions()
+    void printDescriptions(bool complete = false)
     {
+        bool commandFound = false;
         std::map<std::string, std::string> descriptions;
         for (auto& [command, description] : m_descriptions) {
-            if (!command.compare(0, m_command.length(), m_command))
+            if (m_command.length() && !command.compare(0, m_command.length(), m_command)) {
                 descriptions.emplace(command, description);
+                commandFound = true;
+            }
         }
 
-        if (descriptions.size() == 1) {
+        if (descriptions.size() == 1 && complete)
             m_command = descriptions.begin()->first + ' ';
-            printCommand();
-        } else {
-            if (descriptions.empty()) {
+        else {
+            if (!commandFound) {
+                descriptions.clear();
                 for (auto& [command, description] : m_descriptions) {
                     auto position = command.find(s_commandDelimiter);
                     if (position != std::string::npos)
@@ -238,7 +244,6 @@ private:
             }
             print(s_clearLine);
             printCommands(descriptions);
-            descriptions.empty() ? print(m_prompt.c_str()) : printCommand();
         }
     }
 
