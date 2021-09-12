@@ -177,7 +177,6 @@ private:
 
     void runCommand()
     {
-        printf("CMD: %s\n", m_command.c_str());
         m_args.clear();
         for (auto& [command, function] : m_functions) {
             std::ignore = function;
@@ -218,22 +217,18 @@ private:
         }
     }
 
-    void printDescriptions(bool complete = false)
+    void printDescriptions(bool autoComplete = false)
     {
-        bool commandFound = false;
         std::map<std::string, std::string> descriptions;
         for (auto& [command, description] : m_descriptions) {
-            if (m_command.length() && !command.compare(0, m_command.length(), m_command)) {
+            if (m_command.length() && !command.compare(0, m_command.length(), m_command))
                 descriptions.emplace(command, description);
-                commandFound = true;
-            }
         }
 
-        if (descriptions.size() == 1 && complete)
-            m_command = descriptions.begin()->first + ' ';
+        if (descriptions.size() == 1 && autoComplete)
+            m_command = descriptions.begin()->first + s_commandDelimiter;
         else {
-            if (!commandFound) {
-                descriptions.clear();
+            if (descriptions.empty()) {
                 for (auto& [command, description] : m_descriptions) {
                     auto position = command.find(s_commandDelimiter);
                     if (position != std::string::npos)
