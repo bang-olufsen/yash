@@ -19,13 +19,11 @@ void i2cWrite(const std::vector<std::string>& args) {
     printf("i2cWrite(%s, %s, %s)\n", args.at(0).c_str(), args.at(1).c_str(), args.at(2).c_str());
 }
 
-void info(const std::vector<std::string>& args) {
-    std::ignore = args;
+void info([[maybe_unused]] const std::vector<std::string>& args) {
     printf("info()\n");
 }
 
-void version(const std::vector<std::string>& args) {
-    std::ignore = args;
+void version([[maybe_unused]] const std::vector<std::string>& args) {
     printf("version()\n");
 }
 
