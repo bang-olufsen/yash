@@ -240,10 +240,23 @@ private:
                     else
                         descriptions.emplace(command, description);
                 }
+            } else {
+                std::string firstCommand;
+                for (const auto& [command, description] : descriptions) {
+                    std::ignore = description;
+                    if (firstCommand.empty())
+                        firstCommand = command.substr(0, command.find_first_of(s_commandDelimiter));
+                    if (firstCommand != command.substr(0, command.find_first_of(s_commandDelimiter))) {
+                        firstCommand.clear();
+                        break;
+                    }
+                }
+                if (!firstCommand.empty())
+                    m_command = firstCommand + s_commandDelimiter;
             }
         }
 
-        print(s_clearLine);
+        print("\r\n");
         printCommands(descriptions);
     }
 
