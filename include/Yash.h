@@ -178,7 +178,7 @@ private:
     void runCommand()
     {
         m_args.clear();
-        for (auto& [command, function] : m_functions) {
+        for (const auto& [command, function] : m_functions) {
             std::ignore = function;
             if (!m_command.compare(0, command.length(), command)) {
                 auto args = m_command.substr(command.length());
@@ -210,17 +210,17 @@ private:
             return std::max(max, desc.first.size());
         }) };
 
-        for (auto const& desc : descriptions) {
-            std::string alignment((maxCommandSize + 2) - desc.first.size(), ' ');
-            auto description { desc.first + alignment + desc.second + "\r\n" };
-            print(description.c_str());
+        for (const auto& [command, description] : descriptions) {
+            std::string alignment((maxCommandSize + 2) - command.size(), ' ');
+            auto line { command + alignment + description + "\r\n" };
+            print(line.c_str());
         }
     }
 
     void printDescriptions(bool autoComplete = false)
     {
         std::map<std::string, std::string> descriptions;
-        for (auto& [command, description] : m_descriptions) {
+        for (const auto& [command, description] : m_descriptions) {
             if (m_command.length() && !command.compare(0, m_command.length(), m_command))
                 descriptions.emplace(command, description);
         }
@@ -229,7 +229,7 @@ private:
             m_command = descriptions.begin()->first + s_commandDelimiter;
         else {
             if (descriptions.empty()) {
-                for (auto& [command, description] : m_descriptions) {
+                for (const auto& [command, description] : m_descriptions) {
                     auto position = command.find(s_commandDelimiter);
                     if (position != std::string::npos)
                         descriptions.emplace(command.substr(0, position), "Commands");
