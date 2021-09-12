@@ -5,19 +5,21 @@
 #include <Yash.h>
 
 void i2cRead(const std::vector<std::string>& args) {
-    printf("i2c read command called with %lu arguments\n", args.size());
+    printf("i2cRead(%s, %s, %s)\n", args.at(0).c_str(), args.at(1).c_str(), args.at(2).c_str());
 }
 
 void i2cWrite(const std::vector<std::string>& args) {
-    printf("i2c write command called with %lu arguments\n", args.size());
+    printf("i2cWrite(%s, %s, %s)\n", args.at(0).c_str(), args.at(1).c_str(), args.at(2).c_str());
 }
 
 void info(const std::vector<std::string>& args) {
-    printf("info command called with %lu arguments\n", args.size());
+    std::ignore = args;
+    printf("info()\n");
 }
 
 void version(const std::vector<std::string>& args) {
-    printf("version command called with %lu arguments\n", args.size());
+    std::ignore = args;
+    printf("version()\n");
 }
 
 int main() {
