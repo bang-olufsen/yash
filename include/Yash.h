@@ -221,13 +221,17 @@ private:
     {
         std::map<std::string, std::string> descriptions;
         for (const auto& [command, description] : m_descriptions) {
-            if (m_command.length() && !command.compare(0, m_command.length(), m_command))
+            if (!m_command.empty() && !std::memcmp(command.data(), m_command.data(), std::min(m_command.length(), command.length())))
                 descriptions.emplace(command, description);
         }
 
-        if (descriptions.size() == 1 && autoComplete)
-            m_command = descriptions.begin()->first + s_commandDelimiter;
-        else {
+        if (descriptions.size() == 1 && autoComplete) {
+            auto completeCommand = descriptions.begin()->first + s_commandDelimiter;
+            if (m_command != completeCommand) {
+                m_command = completeCommand;
+                return;
+            }
+        } else {
             if (descriptions.empty()) {
                 for (const auto& [command, description] : m_descriptions) {
                     auto position = command.find(s_commandDelimiter);
@@ -237,9 +241,10 @@ private:
                         descriptions.emplace(command, description);
                 }
             }
-            print(s_clearLine);
-            printCommands(descriptions);
         }
+
+        print(s_clearLine);
+        printCommands(descriptions);
     }
 
     static constexpr const char* s_clearLine = "\033[2K\033[100D";
