@@ -231,7 +231,7 @@ private:
                 descriptions.emplace(command, description);
         }
 
-        if (descriptions.size() == 1 && autoComplete) {
+        if ((descriptions.size() == 1) && autoComplete) {
             auto completeCommand = descriptions.begin()->first + s_commandDelimiter;
             if (m_command.size() < completeCommand.size()) {
                 m_command = completeCommand;
@@ -258,7 +258,7 @@ private:
                     }
                 }
 
-                if (!firstCommand.empty())
+                if (!firstCommand.empty() && (firstCommand.size() > m_command.size()))
                     m_command = firstCommand + s_commandDelimiter;
             }
         }
