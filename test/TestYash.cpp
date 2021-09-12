@@ -237,13 +237,12 @@ TEST_CASE("Yash test")
         yash.setCharacter('\n');
     }
 
-#if 0
     SECTION("Test setCharacter - History overflow")
     {
         MOCK_EXPECT(print);
 
         MOCK_EXPECT(i2c).once();
-        for (char& character : "i2c\n"s)
+        for (char& character : "i2c read 1 2 3\n"s)
             yash.setCharacter(character);
 
         // Fill up the history queue so the i2c command overflows
@@ -276,7 +275,6 @@ TEST_CASE("Yash test")
         CHECK(yash.m_functions.empty());
         CHECK(yash.m_descriptions.empty());
     }
-#endif
 
     mock::verify();
     mock::reset();
