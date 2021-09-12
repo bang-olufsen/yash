@@ -56,9 +56,10 @@ public:
     /// @param command A string with the name of the command
     /// @param description A string with the command description
     /// @param function A YashFunction to be called when the command is executed
-    void addCommand(const std::string& command, const std::string& description, YashFunction function)
+    /// @param requiredArgs A size_t with the number of required arguments (default 0)
+    void addCommand(const std::string& command, const std::string& description, YashFunction function, size_t requiredArgs = 0)
     {
-        addCommand(command, "", description, function);
+        addCommand(command, "", description, function, requiredArgs);
     }
 
     /// @brief Adds a command with a sub command to the shell
@@ -66,11 +67,13 @@ public:
     /// @param subCommand A string with the name of the sub command
     /// @param description A string with the command description
     /// @param function A YashFunction to be called when the command is executed
-    void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function)
+    /// @param requiredArgs A size_t with the number of required arguments (default 0)
+    void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function, size_t requiredArgs = 0)
     {
         auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
         m_functions.emplace(fullCommand, function);
         m_descriptions.emplace(fullCommand, description);
+        m_requiredArgs.emplace(fullCommand, requiredArgs);
     }
 
     /// @brief Removes a command from the shell
@@ -98,7 +101,7 @@ public:
         case '\n':
         case '\r':
             print("\r\n");
-            if (m_command.length()) {
+            if (m_command.size()) {
                 runCommand();
                 m_commands.push_back(m_command);
 
@@ -116,9 +119,9 @@ public:
             break;
         case Del:
         case Backspace:
-            if (m_command.length()) {
+            if (m_command.size()) {
                 print(s_clearCharacter);
-                m_command.erase(m_command.length() - 1);
+                m_command.erase(m_command.size() - 1);
             }
             break;
         case Tab:
@@ -180,16 +183,19 @@ private:
         m_args.clear();
         for (const auto& [command, function] : m_functions) {
             std::ignore = function;
-            if (!m_command.compare(0, command.length(), command)) {
-                auto args = m_command.substr(command.length());
+            if (!m_command.compare(0, command.size(), command)) {
+                auto args = m_command.substr(command.size());
                 char *token = std::strtok(args.data(), s_commandDelimiter);
                 while (token) {
                     m_args.push_back(token);
                     token = std::strtok(nullptr, s_commandDelimiter);
                 }
-                function(m_args);
-                print(m_prompt.c_str());
-                return;
+
+                if (m_args.size() >= m_requiredArgs.at(command)) {
+                    function(m_args);
+                    print(m_prompt.c_str());
+                    return;
+                }
             }
         }
 
@@ -221,13 +227,13 @@ private:
     {
         std::map<std::string, std::string> descriptions;
         for (const auto& [command, description] : m_descriptions) {
-            if (!m_command.empty() && !std::memcmp(command.data(), m_command.data(), std::min(m_command.length(), command.length())))
+            if (!m_command.empty() && !std::memcmp(command.data(), m_command.data(), std::min(m_command.size(), command.size())))
                 descriptions.emplace(command, description);
         }
 
         if (descriptions.size() == 1 && autoComplete) {
             auto completeCommand = descriptions.begin()->first + s_commandDelimiter;
-            if (m_command != completeCommand) {
+            if (m_command.size() < completeCommand.size()) {
                 m_command = completeCommand;
                 return;
             }
@@ -251,12 +257,14 @@ private:
                         break;
                     }
                 }
+
                 if (!firstCommand.empty())
                     m_command = firstCommand + s_commandDelimiter;
             }
         }
 
-        print("\r\n");
+        if (autoComplete)
+            print("\r\n");
         printCommands(descriptions);
     }
 
@@ -266,6 +274,7 @@ private:
     static constexpr const char* s_commandDelimiter = " ";
     std::map<std::string, YashFunction> m_functions;
     std::map<std::string, std::string> m_descriptions;
+    std::map<std::string, size_t> m_requiredArgs;
     std::vector<std::string> m_commands;
     std::vector<std::string>::const_iterator m_commandsIndex;
     std::vector<std::string> m_args;

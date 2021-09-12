@@ -24,8 +24,8 @@ int main() {
     Yash::Yash yash;
     yash.setPrint([&](const char* str) { printf("%s", str); });
     yash.setPrompt("$ ");
-    yash.addCommand("i2c", "read", "I2C read <register> <bytes>", [&](const auto& args) { i2cRead(args); });
-    yash.addCommand("i2c", "write", "I2C write <register> <bytes>", [&](const auto& args) { i2cWrite(args); });
+    yash.addCommand("i2c", "read", "I2C read <addr> <reg> <bytes>", [&](const auto& args) { i2cRead(args); }, 3);
+    yash.addCommand("i2c", "write", "I2C write <addr> <reg> <value>", [&](const auto& args) { i2cWrite(args); }, 3);
     yash.addCommand("info", "System info", [&](const auto& args) { info(args); });
     yash.addCommand("version", "Build version", [&](const auto& args) { version(args); });
 
