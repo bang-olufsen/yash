@@ -56,10 +56,10 @@ public:
     /// @param command A string with the name of the command
     /// @param description A string with the command description
     /// @param function A YashFunction to be called when the command is executed
-    /// @param requiredArgs A size_t with the number of required arguments (default 0)
-    void addCommand(const std::string& command, const std::string& description, YashFunction function, size_t requiredArgs = 0)
+    /// @param requiredArguments A size_t with the number of required arguments (default 0)
+    void addCommand(const std::string& command, const std::string& description, YashFunction function, size_t requiredArguments = 0)
     {
-        addCommand(command, "", description, function, requiredArgs);
+        addCommand(command, "", description, function, requiredArguments);
     }
 
     /// @brief Adds a command with a sub command to the shell
@@ -67,13 +67,13 @@ public:
     /// @param subCommand A string with the name of the sub command
     /// @param description A string with the command description
     /// @param function A YashFunction to be called when the command is executed
-    /// @param requiredArgs A size_t with the number of required arguments (default 0)
-    void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function, size_t requiredArgs = 0)
+    /// @param requiredArguments A size_t with the number of required arguments (default 0)
+    void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function, size_t requiredArguments = 0)
     {
         auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
         m_functions.emplace(fullCommand, function);
         m_descriptions.emplace(fullCommand, description);
-        m_requiredArgs.emplace(fullCommand, requiredArgs);
+        m_requiredArguments.emplace(fullCommand, requiredArguments);
     }
 
     /// @brief Removes a command from the shell
@@ -180,19 +180,19 @@ private:
 
     void runCommand()
     {
-        m_args.clear();
+        std::vector<std::string> arguments;
         for (const auto& [command, function] : m_functions) {
             std::ignore = function;
             if (!m_command.compare(0, command.size(), command)) {
                 auto args = m_command.substr(command.size());
                 char *token = std::strtok(args.data(), s_commandDelimiter);
                 while (token) {
-                    m_args.push_back(token);
+                    arguments.push_back(token);
                     token = std::strtok(nullptr, s_commandDelimiter);
                 }
 
-                if (m_args.size() >= m_requiredArgs.at(command)) {
-                    function(m_args);
+                if (arguments.size() >= m_requiredArguments.at(command)) {
+                    function(arguments);
                     print(m_prompt.c_str());
                     return;
                 }
@@ -233,7 +233,7 @@ private:
 
         if ((descriptions.size() == 1) && autoComplete) {
             auto completeCommand = descriptions.begin()->first + s_commandDelimiter;
-            if (m_command.size() < completeCommand.size()) {
+            if (completeCommand.size() > m_command.size()) {
                 m_command = completeCommand;
                 return;
             }
@@ -274,10 +274,9 @@ private:
     static constexpr const char* s_commandDelimiter = " ";
     std::map<std::string, YashFunction> m_functions;
     std::map<std::string, std::string> m_descriptions;
-    std::map<std::string, size_t> m_requiredArgs;
+    std::map<std::string, size_t> m_requiredArguments;
     std::vector<std::string> m_commands;
     std::vector<std::string>::const_iterator m_commandsIndex;
-    std::vector<std::string> m_args;
     std::string m_command;
     std::string m_prompt;
     YashPrint m_printFunction;
