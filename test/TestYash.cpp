@@ -52,7 +52,6 @@ TEST_CASE("Yash test")
     SECTION("Test addCommand function")
     {
         CHECK_FALSE(yash.m_functions.empty());
-        CHECK_FALSE(yash.m_descriptions.empty());
     }
 
     SECTION("Test setCharacter function with line feed input")
@@ -269,11 +268,9 @@ TEST_CASE("Yash test")
         // Try to remove a non-existing command
         yash.removeCommand("i2");
         CHECK_FALSE(yash.m_functions.empty());
-        CHECK_FALSE(yash.m_descriptions.empty());
 
         yash.removeCommand(command + " " + subCommand);
         CHECK(yash.m_functions.empty());
-        CHECK(yash.m_descriptions.empty());
     }
 
     mock::verify();

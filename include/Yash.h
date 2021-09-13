@@ -71,9 +71,7 @@ public:
     void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function, size_t requiredArguments = 0)
     {
         auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
-        m_functions.emplace(fullCommand, function);
-        m_descriptions.emplace(fullCommand, description);
-        m_requiredArguments.emplace(fullCommand, requiredArguments);
+        m_functions.emplace(fullCommand, CommandFunction(description, function, requiredArguments));
     }
 
     /// @brief Removes a command from the shell
@@ -90,7 +88,6 @@ public:
     {
         auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
         m_functions.erase(fullCommand);
-        m_descriptions.erase(fullCommand);
     }
 
     /// @brief Sets a received character on the shell
@@ -178,11 +175,21 @@ private:
         LeftBracket
     };
 
+    struct CommandFunction {
+        CommandFunction(std::string description, YashFunction function, size_t requiredArguments) 
+            : m_description(description)
+            , m_function(function)
+            , m_requiredArguments(requiredArguments) {}
+
+        std::string m_description;
+        YashFunction m_function;
+        size_t m_requiredArguments;
+    };
+
     void runCommand()
     {
         std::vector<std::string> arguments;
         for (const auto& [command, function] : m_functions) {
-            std::ignore = function;
             if (!m_command.compare(0, command.size(), command)) {
                 auto args = m_command.substr(command.size());
                 char *token = std::strtok(args.data(), s_commandDelimiter);
@@ -191,8 +198,8 @@ private:
                     token = std::strtok(nullptr, s_commandDelimiter);
                 }
 
-                if (arguments.size() >= m_requiredArguments.at(command)) {
-                    function(arguments);
+                if (arguments.size() >= function.m_requiredArguments) {
+                    function.m_function(arguments);
                     print(m_prompt.c_str());
                     return;
                 }
@@ -226,9 +233,9 @@ private:
     void printDescriptions(bool autoComplete = false)
     {
         std::map<std::string, std::string> descriptions;
-        for (const auto& [command, description] : m_descriptions) {
+        for (const auto& [command, function] : m_functions) {
             if (!m_command.empty() && !std::memcmp(command.data(), m_command.data(), std::min(m_command.size(), command.size())))
-                descriptions.emplace(command, description);
+                descriptions.emplace(command, function.m_description);
         }
 
         if ((descriptions.size() == 1) && autoComplete) {
@@ -239,17 +246,17 @@ private:
             }
         } else {
             if (descriptions.empty()) {
-                for (const auto& [command, description] : m_descriptions) {
-                    auto position = command.find(s_commandDelimiter);
+                for (const auto& [command, function] : m_functions) {
+                    auto position = command.find_first_of(s_commandDelimiter);
                     if (position != std::string::npos)
                         descriptions.emplace(command.substr(0, position), "Commands");
                     else
-                        descriptions.emplace(command, description);
+                        descriptions.emplace(command, function.m_description);
                 }
             } else {
                 std::string firstCommand;
-                for (const auto& [command, description] : descriptions) {
-                    std::ignore = description;
+                for (const auto& [command, function] : descriptions) {
+                    std::ignore = function;
                     if (firstCommand.empty())
                         firstCommand = command.substr(0, command.find_first_of(s_commandDelimiter));
                     if (firstCommand != command.substr(0, command.find_first_of(s_commandDelimiter))) {
@@ -272,9 +279,7 @@ private:
     static constexpr const char* s_clearScreen = "\033[2J\x1B[H";
     static constexpr const char* s_clearCharacter = "\033[1D \033[1D";
     static constexpr const char* s_commandDelimiter = " ";
-    std::map<std::string, YashFunction> m_functions;
-    std::map<std::string, std::string> m_descriptions;
-    std::map<std::string, size_t> m_requiredArguments;
+    std::map<std::string, CommandFunction> m_functions;
     std::vector<std::string> m_commands;
     std::vector<std::string>::const_iterator m_commandsIndex;
     std::string m_command;
