@@ -71,7 +71,7 @@ public:
     void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function, size_t requiredArguments = 0)
     {
         auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
-        m_functions.emplace(fullCommand, CommandFunction(description, function, requiredArguments));
+        m_functions.emplace(fullCommand, Function(description, function, requiredArguments));
     }
 
     /// @brief Removes a command from the shell
@@ -175,8 +175,8 @@ private:
         LeftBracket
     };
 
-    struct CommandFunction {
-        CommandFunction(std::string description, YashFunction function, size_t requiredArguments) 
+    struct Function {
+        Function(std::string description, YashFunction function, size_t requiredArguments) 
             : m_description(description)
             , m_function(function)
             , m_requiredArguments(requiredArguments) {}
@@ -279,7 +279,7 @@ private:
     static constexpr const char* s_clearScreen = "\033[2J\x1B[H";
     static constexpr const char* s_clearCharacter = "\033[1D \033[1D";
     static constexpr const char* s_commandDelimiter = " ";
-    std::map<std::string, CommandFunction> m_functions;
+    std::map<std::string, Function> m_functions;
     std::vector<std::string> m_commands;
     std::vector<std::string>::const_iterator m_commandsIndex;
     std::string m_command;
