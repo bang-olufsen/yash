@@ -1,8 +1,30 @@
-// Copyright 2021 - Bang & Olufsen a/s
+// The MIT License (MIT)
+
+// Copyright (c) 2021 Bang & Olufsen a/s
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #pragma once
 
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 #include <functional>
 #include <map>
 #include <numeric>
@@ -55,18 +77,38 @@ public:
     /// @param command A string with the name of the command
     /// @param description A string with the command description
     /// @param function A YashFunction to be called when the command is executed
-    void addCommand(const std::string& command, const std::string& description, YashFunction function)
+    /// @param requiredArguments A size_t with the number of required arguments (default 0)
+    void addCommand(const std::string& command, const std::string& description, YashFunction function, size_t requiredArguments = 0)
     {
-        m_functions.emplace(command, function);
-        m_descriptions.emplace(command, description);
+        addCommand(command, "", description, function, requiredArguments);
+    }
+
+    /// @brief Adds a command with a sub command to the shell
+    /// @param command A string with the name of the command
+    /// @param subCommand A string with the name of the sub command
+    /// @param description A string with the command description
+    /// @param function A YashFunction to be called when the command is executed
+    /// @param requiredArguments A size_t with the number of required arguments (default 0)
+    void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function, size_t requiredArguments = 0)
+    {
+        auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
+        m_functions.emplace(fullCommand, Function(description, function, requiredArguments));
     }
 
     /// @brief Removes a command from the shell
     /// @param command A string with the name of the command
     void removeCommand(const std::string& command)
     {
-        m_functions.erase(command);
-        m_descriptions.erase(command);
+        removeCommand(command, "");
+    }
+
+    /// @brief Removes a command from the shell
+    /// @param command A string with the name of the command
+    /// @param subCommand A string with the name of the sub command
+    void removeCommand(const std::string& command, const std::string& subCommand)
+    {
+        auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
+        m_functions.erase(fullCommand);
     }
 
     /// @brief Sets a received character on the shell
@@ -77,8 +119,8 @@ public:
         case '\n':
         case '\r':
             print("\r\n");
-            if (m_command.length()) {
-                runCommand(m_command);
+            if (m_command.size()) {
+                runCommand();
                 m_commands.push_back(m_command);
 
                 if (m_commands.size() > YASH_HISTORY_SIZE)
@@ -95,28 +137,14 @@ public:
             break;
         case Del:
         case Backspace:
-            if (m_command.length()) {
+            if (m_command.size()) {
                 print(s_clearCharacter);
-                m_command.erase(m_command.length() - 1);
+                m_command.erase(m_command.size() - 1);
             }
             break;
         case Tab:
-            if (m_command.length()) {
-                std::map<std::string, std::string> descriptions;
-                for (auto& [command, description] : m_descriptions) {
-                    if (!command.compare(0, m_command.length(), m_command))
-                        descriptions.emplace(command, description);
-                }
-
-                if (descriptions.size() == 1) {
-                    m_command = descriptions.begin()->first + ' ';
-                    printCommand();
-                } else if (descriptions.size() > 1) {
-                    print(s_clearLine);
-                    printCommands(descriptions);
-                    printCommand();
-                }
-            }
+            printDescriptions(true);
+            printCommand();
             break;
         case Esc:
             m_ctrlState = CtrlState::Esc;
@@ -168,18 +196,38 @@ private:
         LeftBracket
     };
 
-    void runCommand(const std::string& command)
-    {
-        commandToArgs(command, m_args);
+    struct Function {
+        Function(std::string description, YashFunction function, size_t requiredArguments) 
+            : m_description(description)
+            , m_function(function)
+            , m_requiredArguments(requiredArguments) {}
 
-        if (!m_args.empty()) {
-            auto it = m_functions.find(m_args.front());
-            if (it == m_functions.end())
-                printCommands(m_descriptions);
-            else
-                it->second(m_args);
+        std::string m_description;
+        YashFunction m_function;
+        size_t m_requiredArguments;
+    };
+
+    void runCommand()
+    {
+        std::vector<std::string> arguments;
+        for (const auto& [command, function] : m_functions) {
+            if (!m_command.compare(0, command.size(), command)) {
+                auto args = m_command.substr(command.size());
+                char *token = std::strtok(args.data(), s_commandDelimiter);
+                while (token) {
+                    arguments.push_back(token);
+                    token = std::strtok(nullptr, s_commandDelimiter);
+                }
+
+                if (arguments.size() >= function.m_requiredArguments) {
+                    function.m_function(arguments);
+                    print(m_prompt.c_str());
+                    return;
+                }
+            }
         }
 
+        printDescriptions();
         print(m_prompt.c_str());
     }
 
@@ -196,42 +244,65 @@ private:
             return std::max(max, desc.first.size());
         }) };
 
-        for (auto const& desc : descriptions) {
-            std::string alignment((maxCommandSize + 2) - desc.first.size(), ' ');
-            auto description { desc.first + alignment + desc.second + "\r\n" };
-            print(description.c_str());
+        for (const auto& [command, description] : descriptions) {
+            std::string alignment((maxCommandSize + 2) - command.size(), ' ');
+            auto line { command + alignment + description + "\r\n" };
+            print(line.c_str());
         }
     }
 
-    void commandToArgs(std::string command, std::vector<std::string>& args)
+    void printDescriptions(bool autoComplete = false)
     {
-        std::size_t oldPosition = 0, position = 0;
-
-        // Trim trailing whitespace to not get empty arguments
-        auto trail { command.find_last_not_of(' ') };
-        command = command.substr(0, trail + 1);
-
-        args.clear();
-        while (true) {
-            position = command.find(' ', oldPosition);
-            if (position == std::string::npos) {
-                args.push_back(command.substr(oldPosition));
-                break;
-            }
-
-            args.push_back(command.substr(oldPosition, position - oldPosition));
-            oldPosition = position + 1;
+        std::map<std::string, std::string> descriptions;
+        for (const auto& [command, function] : m_functions) {
+            if (!m_command.empty() && !std::memcmp(command.data(), m_command.data(), std::min(m_command.size(), command.size())))
+                descriptions.emplace(command, function.m_description);
         }
+
+        if ((descriptions.size() == 1) && autoComplete) {
+            auto completeCommand = descriptions.begin()->first + s_commandDelimiter;
+            if (completeCommand.size() > m_command.size()) {
+                m_command = completeCommand;
+                return;
+            }
+        } else {
+            if (descriptions.empty()) {
+                for (const auto& [command, function] : m_functions) {
+                    auto position = command.find_first_of(s_commandDelimiter);
+                    if (position != std::string::npos)
+                        descriptions.emplace(command.substr(0, position), "Commands");
+                    else
+                        descriptions.emplace(command, function.m_description);
+                }
+            } else {
+                std::string firstCommand;
+                for (const auto& [command, function] : descriptions) {
+                    std::ignore = function;
+                    if (firstCommand.empty())
+                        firstCommand = command.substr(0, command.find_first_of(s_commandDelimiter));
+                    if (firstCommand != command.substr(0, command.find_first_of(s_commandDelimiter))) {
+                        firstCommand.clear();
+                        break;
+                    }
+                }
+
+                if (!firstCommand.empty() && (firstCommand.size() > m_command.size()))
+                    m_command = firstCommand + s_commandDelimiter;
+            }
+        }
+
+        if (autoComplete)
+            print("\r\n");
+        printCommands(descriptions);
     }
 
     static constexpr const char* s_clearLine = "\033[2K\033[100D";
     static constexpr const char* s_clearScreen = "\033[2J\x1B[H";
     static constexpr const char* s_clearCharacter = "\033[1D \033[1D";
-    std::map<std::string, YashFunction> m_functions;
-    std::map<std::string, std::string> m_descriptions;
+    static constexpr const char* s_commandDelimiter = " ";
+    std::map<std::string, Function> m_functions;
     std::vector<std::string> m_commands;
     std::vector<std::string>::const_iterator m_commandsIndex;
-    std::vector<std::string> m_args;
     std::string m_command;
     std::string m_prompt;
     YashPrint m_printFunction;
