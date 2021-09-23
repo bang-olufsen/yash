@@ -53,11 +53,11 @@ public:
 
     /// @brief Sets the print function to be used
     /// @param print The YashPrint funcion to be used
-    void setPrint(YashPrint print) { m_printFunction = print; }
+    void setPrint(YashPrint print) { m_printFunction = std::move(print); }
 
     /// @brief Prints the specified text using the print function
     /// @param text The text to be printed
-    void print(const char* text) { m_printFunction(text); }
+    void print(const char* text) const { m_printFunction(text); }
 
     /// @brief Prints the specified text using the print function. Printf style formating can be used
     void printf(const char* fmt, ...)
@@ -80,7 +80,7 @@ public:
     /// @param requiredArguments A size_t with the number of required arguments (default 0)
     void addCommand(const std::string& command, const std::string& description, YashFunction function, size_t requiredArguments = 0)
     {
-        addCommand(command, "", description, function, requiredArguments);
+        addCommand(command, "", description, std::move(function), requiredArguments);
     }
 
     /// @brief Adds a command with a sub command to the shell
@@ -92,7 +92,7 @@ public:
     void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function, size_t requiredArguments = 0)
     {
         auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
-        m_functions.emplace(fullCommand, Function(description, function, requiredArguments));
+        m_functions.emplace(fullCommand, Function(description, std::move(function), requiredArguments));
     }
 
     /// @brief Removes a command from the shell
@@ -119,7 +119,7 @@ public:
         case '\n':
         case '\r':
             print("\r\n");
-            if (m_command.size()) {
+            if (!m_command.empty()) {
                 runCommand();
                 m_commands.push_back(m_command);
 
@@ -130,21 +130,41 @@ public:
                 m_commandsIndex = m_commands.end();
             } else
                 print(m_prompt.c_str());
+            m_pos = m_command.length();
             break;
         case EndOfText:
             m_command.clear();
             printCommand();
+            m_pos = m_command.length();
             break;
         case Del:
         case Backspace:
-            if (m_command.size()) {
-                print(s_clearCharacter);
-                m_command.erase(m_command.size() - 1);
+            if (!m_command.empty()) {
+                if (m_pos == m_command.length()) {
+                    print(s_clearCharacter);
+                    m_command.erase(m_command.length() - 1);
+                    m_pos = m_command.length();
+                } else if (m_pos) {
+                    m_command.erase(--m_pos, 1);
+                    print(s_moveCursorBackward);
+
+                    for (size_t i = m_pos; i < m_command.length(); i++) {
+                        print(std::string(1, m_command.at(i)).c_str());
+                    }
+
+                    print(std::string(1, ' ').c_str());
+                    print(s_clearCharacter); // clear unused char at the end
+
+                    for (size_t i = m_pos; i < m_command.length(); i++) {
+                        print(s_moveCursorBackward);
+                    }
+                }
             }
             break;
         case Tab:
             printDescriptions(true);
             printCommand();
+            m_pos = m_command.length();
             break;
         case Esc:
             m_ctrlState = CtrlState::Esc;
@@ -154,23 +174,129 @@ public:
                 m_ctrlState = CtrlState::LeftBracket;
             return;
         default:
-            if (character == Up && m_ctrlState == CtrlState::LeftBracket) {
-                if (m_commandsIndex != m_commands.begin()) {
-                    m_command = *--m_commandsIndex;
-                    printCommand();
+            if (m_ctrlState == CtrlState::LeftBracket) {
+                m_ctrlSeq += character;
+                for (const auto &it : m_supportedCtrlSeq) {
+                    if (m_ctrlSeq.compare(0, m_ctrlSeq.length(), it.first, 0, m_ctrlSeq.length()) == 0) {
+                        if (m_ctrlSeq.length() == it.first.length()) {
+                            switch (it.second) {
+                            case CtrlSeq::Up:
+                                if (m_commandsIndex != m_commands.begin()) {
+                                    m_command = *--m_commandsIndex;
+                                    printCommand();
+                                    m_pos = m_command.length();
+                                }
+                                break;
+                            case CtrlSeq::Down:
+                                if (m_commandsIndex != m_commands.end()) {
+                                    ++m_commandsIndex;
+                                    if (m_commandsIndex != m_commands.end()) {
+                                        m_command = *m_commandsIndex;
+                                    } else {
+                                        m_command.clear();
+                                    }
+                                    printCommand();
+                                    m_pos = m_command.length();
+                                }
+                                break;
+                            case CtrlSeq::Right:
+                                if (m_pos != m_command.length()) {
+                                    print(s_moveCursorForward);
+                                    m_pos++;
+                                }
+                                break;
+                            case CtrlSeq::Left:
+                                if (m_pos) {
+                                    print(s_moveCursorBackward);
+                                    m_pos--;
+                                }
+                                break;
+                            case CtrlSeq::Home:
+                                while (m_pos) {
+                                    print(s_moveCursorBackward);
+                                    m_pos--;
+                                }
+                                break;
+                            case CtrlSeq::Delete:
+                                if (m_pos != m_command.length()) {
+                                    m_command.erase(m_pos, 1);
+
+                                    print(std::string(1, ' ').c_str());
+                                    print(s_clearCharacter); // clear deleted char
+
+                                    for (size_t i = m_pos; i < m_command.length(); i++) {
+                                        print(std::string(1, m_command.at(i)).c_str());
+                                    }
+
+                                    print(std::string(1, ' ').c_str());
+                                    print(s_clearCharacter); // clear unused char at the end
+
+                                    for (size_t i = m_pos; i < m_command.length(); i++) {
+                                        print(s_moveCursorBackward);
+                                    }
+                                }
+                                break;
+                            case CtrlSeq::End:
+                                while (m_pos != m_command.length()) {
+                                    print(s_moveCursorForward);
+                                    m_pos++;
+                                }
+                                break;
+                            case CtrlSeq::CtrlRight:
+                                while (m_pos != m_command.length() && m_command.at(m_pos) == ' ') { // skip spaces until we find the first char
+                                    print(s_moveCursorForward);
+                                    m_pos++;
+                                }
+                                while (m_pos != m_command.length() && m_command.at(m_pos) != ' ') { // skip chars until we find the first space
+                                    print(s_moveCursorForward);
+                                    m_pos++;
+                                }
+                                break;
+                            case CtrlSeq::CtrlLeft:
+                                if (m_pos && m_pos == m_command.length()) { // step inside the m_command range
+                                    print(s_moveCursorBackward);
+                                    m_pos--;
+                                }
+                                if (m_pos && m_pos != m_command.length() && m_command.at(m_pos) != ' ') { // skip the first char
+                                    print(s_moveCursorBackward);
+                                    m_pos--;
+                                }
+                                while (m_pos && m_pos != m_command.length() && m_command.at(m_pos) == ' ') { // skip spaces until we find the first char
+                                    print(s_moveCursorBackward);
+                                    m_pos--;
+                                }
+                                while (m_pos && m_pos != m_command.length() && m_command.at(m_pos) != ' ') { // skip chars until we find the first space
+                                    print(s_moveCursorBackward);
+                                    m_pos--;
+                                }
+                                if (m_pos && m_pos != m_command.length() && m_command.at(m_pos) == ' ') { // step forward if we hit a space in order to highlight a char
+                                    print(s_moveCursorForward);
+                                    m_pos++;
+                                }
+                                break;
+                            }
+                        } else {
+                            return; // check the next ctrl character
+                        }
+                    }
                 }
-            } else if (character == Down && m_ctrlState == CtrlState::LeftBracket) {
-                if (m_commandsIndex != m_commands.end()) {
-                    ++m_commandsIndex;
-                    if (m_commandsIndex != m_commands.end())
-                        m_command = *m_commandsIndex;
-                    else
-                        m_command.clear();
-                    printCommand();
-                }
+                m_ctrlSeq.clear();
             } else {
-                print(std::string(1, character).c_str());
-                m_command += character;
+                if (m_pos == m_command.length()) {
+                    print(std::string(1, character).c_str());
+                    m_command += character;
+                    m_pos = m_command.length();
+                } else {
+                    print(std::string(1, character).c_str());
+                    m_command.insert(m_pos++, 1, character);
+
+                    for (size_t i = m_pos; i < m_command.length(); i++) {
+                        print(std::string(1, m_command.at(i)).c_str());
+                    }
+                    for (size_t i = m_pos; i < m_command.length(); i++) {
+                        print(s_moveCursorBackward);
+                    }
+                }
             }
             break;
         }
@@ -186,6 +312,8 @@ private:
         Esc = 27,
         Up = 65,
         Down = 66,
+        Right = 67,
+        Left = 68,
         LeftBracket = 91,
         Del = 127,
     };
@@ -197,14 +325,25 @@ private:
     };
 
     struct Function {
-        Function(std::string description, YashFunction function, size_t requiredArguments) 
-            : m_description(description)
-            , m_function(function)
+        Function(std::string description, YashFunction function, size_t requiredArguments)
+            : m_description(std::move(description))
+            , m_function(std::move(function))
             , m_requiredArguments(requiredArguments) {}
 
         std::string m_description;
         YashFunction m_function;
         size_t m_requiredArguments;
+    };
+    enum class CtrlSeq {
+        Up,
+        Down,
+        Right,
+        Left,
+        Home,
+        Delete,
+        End,
+        CtrlRight,
+        CtrlLeft
     };
 
     void runCommand()
@@ -215,7 +354,7 @@ private:
                 auto args = m_command.substr(command.size());
                 char *token = std::strtok(args.data(), s_commandDelimiter);
                 while (token) {
-                    arguments.push_back(token);
+                    arguments.emplace_back(token);
                     token = std::strtok(nullptr, s_commandDelimiter);
                 }
 
@@ -246,7 +385,9 @@ private:
 
         for (const auto& [command, description] : descriptions) {
             std::string alignment((maxCommandSize + 2) - command.size(), ' ');
-            auto line { command + alignment + description + "\r\n" };
+            std::string line;
+            line.reserve(command.size() + alignment.size() + description.size() + 2);
+            line.append(command).append(alignment).append(description).append("\r\n");
             print(line.c_str());
         }
     }
@@ -299,15 +440,30 @@ private:
     static constexpr const char* s_clearLine = "\033[2K\033[100D";
     static constexpr const char* s_clearScreen = "\033[2J\x1B[H";
     static constexpr const char* s_clearCharacter = "\033[1D \033[1D";
+    static constexpr const char* s_moveCursorForward = "\033[1C";
+    static constexpr const char* s_moveCursorBackward = "\033[1D";
     static constexpr const char* s_commandDelimiter = " ";
     std::map<std::string, Function> m_functions;
     std::vector<std::string> m_commands;
     std::vector<std::string>::const_iterator m_commandsIndex;
+    size_t m_pos{0};
     std::string m_command;
     std::string m_prompt;
     YashPrint m_printFunction;
-    std::array<char, 128> m_buffer;
+    std::array<char, 256> m_buffer{};
     CtrlState m_ctrlState { CtrlState::None };
+    std::string m_ctrlSeq;
+    const std::map<std::string, CtrlSeq> m_supportedCtrlSeq = {
+        {"A", CtrlSeq::Up},
+        {"B", CtrlSeq::Down},
+        {"C", CtrlSeq::Right},
+        {"D", CtrlSeq::Left},
+        {"1~", CtrlSeq::Home},
+        {"3~", CtrlSeq::Delete},
+        {"4~", CtrlSeq::End},
+        {"1;5C", CtrlSeq::CtrlRight},
+        {"1;5D", CtrlSeq::CtrlLeft}
+    };
 };
 
 } // namespace Yash
