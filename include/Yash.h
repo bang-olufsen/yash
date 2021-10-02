@@ -411,9 +411,9 @@ private:
                 for (const auto& [command, function] : m_functions) {
                     auto position = command.find_first_of(s_commandDelimiter);
                     if (position != std::string::npos) {
-                        std::string cmd = command.substr(0, position);
-                        cmd[0] = toupper(cmd[0]);
-                        descriptions.emplace(command.substr(0, position), cmd + " commands");
+                        auto firstCommand = command.substr(0, position);
+                        firstCommand[0] = toupper(firstCommand[0]);
+                        descriptions.emplace(command.substr(0, position), firstCommand + " commands");
                     }
                     else
                         descriptions.emplace(command, function.m_description);
