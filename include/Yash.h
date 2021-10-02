@@ -410,8 +410,11 @@ private:
             if (descriptions.empty()) {
                 for (const auto& [command, function] : m_functions) {
                     auto position = command.find_first_of(s_commandDelimiter);
-                    if (position != std::string::npos)
-                        descriptions.emplace(command.substr(0, position), "Commands");
+                    if (position != std::string::npos) {
+                        std::string cmd = command.substr(0, position);
+                        cmd[0] = toupper(cmd[0]);
+                        descriptions.emplace(command.substr(0, position), cmd + " commands");
+                    }
                     else
                         descriptions.emplace(command, function.m_description);
                 }
