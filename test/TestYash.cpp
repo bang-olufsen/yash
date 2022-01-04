@@ -40,13 +40,12 @@ TEST_CASE("Yash test")
 {
     Yash::Yash yash;
     std::string prompt = "$ ";
-    std::string command = "i2c";
-    std::string subCommand = "read";
+    std::string command = "i2c read";
     std::string description = "I2C read <addr> <reg> <bytes>";
 
     yash.setPrint(print);
     yash.setPrompt(prompt);
-    yash.addCommand(command, subCommand, description, &i2c, 3);
+    yash.addCommand(command, description, &i2c, 3);
 
     SECTION("Test setPrompt function")
     {
@@ -69,7 +68,7 @@ TEST_CASE("Yash test")
     SECTION("Test setCharacter function with 'i2' input")
     {
         std::string testCommand = "i2\n";
-        std::string help = command + " " + subCommand + "  " + description + "\r\n";
+        std::string help = command + "  " + description + "\r\n";
 
         MOCK_EXPECT(print).with("");
         MOCK_EXPECT(print).with("i");
@@ -103,7 +102,7 @@ TEST_CASE("Yash test")
         mock::sequence seq;
         MOCK_EXPECT(print).once().in(seq).with("i");
         MOCK_EXPECT(print).once().in(seq).with(mock::any);
-        MOCK_EXPECT(print).once().in(seq).with(command + " " + subCommand + "  " + description + "\r\n");
+        MOCK_EXPECT(print).once().in(seq).with(command + "  " + description + "\r\n");
         MOCK_EXPECT(print).once().in(seq).with(secondCommand + "      " + secondDescription + "\r\n");
         MOCK_EXPECT(print).once().in(seq).with(mock::any);
         MOCK_EXPECT(print).once().in(seq).with(prompt.c_str());
@@ -302,7 +301,7 @@ TEST_CASE("Yash test")
         yash.removeCommand("i2");
         CHECK_FALSE(yash.m_functions.empty());
 
-        yash.removeCommand(command + " " + subCommand);
+        yash.removeCommand(command);
         CHECK(yash.m_functions.empty());
     }
 

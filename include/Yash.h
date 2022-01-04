@@ -30,6 +30,7 @@
 #include <numeric>
 #include <string>
 #include <vector>
+#include <string_view>
 
 #ifndef YASH_HISTORY_SIZE
 #define YASH_HISTORY_SIZE 10
@@ -74,41 +75,20 @@ public:
     void setPrompt(const std::string& prompt) { m_prompt = prompt; }
 
     /// @brief Adds a command to the shell
-    /// @param command A string with the name of the command
+    /// @param command A string_view with the name of the command. Subcommands must be delimited with a space (e.g. "i2c scan")
     /// @param description A string with the command description
     /// @param function A YashFunction to be called when the command is executed
     /// @param requiredArguments A size_t with the number of required arguments (default 0)
-    void addCommand(const std::string& command, const std::string& description, YashFunction function, size_t requiredArguments = 0)
+    void addCommand(std::string_view command, std::string_view description, YashFunction function, size_t requiredArguments = 0)
     {
-        addCommand(command, "", description, std::move(function), requiredArguments);
-    }
-
-    /// @brief Adds a command with a sub command to the shell
-    /// @param command A string with the name of the command
-    /// @param subCommand A string with the name of the sub command
-    /// @param description A string with the command description
-    /// @param function A YashFunction to be called when the command is executed
-    /// @param requiredArguments A size_t with the number of required arguments (default 0)
-    void addCommand(const std::string& command, const std::string& subCommand, const std::string& description, YashFunction function, size_t requiredArguments = 0)
-    {
-        auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
-        m_functions.emplace(fullCommand, Function(description, std::move(function), requiredArguments));
+        m_functions.emplace(command, Function(description, std::move(function), requiredArguments));
     }
 
     /// @brief Removes a command from the shell
-    /// @param command A string with the name of the command
-    void removeCommand(const std::string& command)
+    /// @param command A string_view with the name of the command
+    void removeCommand(std::string_view command)
     {
-        removeCommand(command, "");
-    }
-
-    /// @brief Removes a command from the shell
-    /// @param command A string with the name of the command
-    /// @param subCommand A string with the name of the sub command
-    void removeCommand(const std::string& command, const std::string& subCommand)
-    {
-        auto fullCommand = subCommand.empty() ? command : command + s_commandDelimiter + subCommand;
-        m_functions.erase(fullCommand);
+        m_functions.erase(command);
     }
 
     /// @brief Sets a received character on the shell
@@ -325,12 +305,12 @@ private:
     };
 
     struct Function {
-        Function(std::string description, YashFunction function, size_t requiredArguments)
+        Function(std::string_view description, YashFunction function, size_t requiredArguments)
             : m_description(std::move(description))
             , m_function(std::move(function))
             , m_requiredArguments(requiredArguments) {}
 
-        std::string m_description;
+        std::string_view m_description;
         YashFunction m_function;
         size_t m_requiredArguments;
     };
@@ -411,7 +391,8 @@ private:
                 for (const auto& [command, function] : m_functions) {
                     auto position = command.find_first_of(s_commandDelimiter);
                     if (position != std::string::npos) {
-                        auto firstCommand = command.substr(0, position);
+                        auto firstCommandView = command.substr(0, position);
+                        std::string firstCommand = {firstCommandView.begin(), firstCommandView.end()};
                         firstCommand[0] = toupper(firstCommand[0]);
                         descriptions.emplace(command.substr(0, position), firstCommand + " commands");
                     }
@@ -446,7 +427,7 @@ private:
     static constexpr const char* s_moveCursorForward = "\033[1C";
     static constexpr const char* s_moveCursorBackward = "\033[1D";
     static constexpr const char* s_commandDelimiter = " ";
-    std::map<std::string, Function> m_functions;
+    std::map<std::string_view, Function> m_functions;
     std::vector<std::string> m_commands;
     std::vector<std::string>::const_iterator m_commandsIndex;
     size_t m_pos{0};
