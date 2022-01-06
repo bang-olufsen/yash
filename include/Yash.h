@@ -14,7 +14,7 @@
 #include <string_view>
 
 #ifndef YASH_FUNCTION_ARRAY_SIZE
-#define YASH_FUNCTION_ARRAY_SIZE 1
+#define YASH_FUNCTION_ARRAY_SIZE 4
 #endif
 
 #ifndef YASH_HISTORY_SIZE
@@ -23,30 +23,21 @@
 
 namespace Yash {
 
-struct Function {
+typedef void (*CommandFunction)(const std::vector<std::string>&);
+
+class Function {
 public:
     Function() = default;
 
     std::string_view m_command;
     std::string_view m_description;
-    std::function<void(const std::vector<std::string>&)> m_function;
+    CommandFunction m_function;
     size_t m_requiredArguments;
 };
 
-struct Function2 {
-public:
-    Function2() = default;
-
-    std::string_view m_command;
-    std::string_view m_description;
-    size_t m_requiredArguments;
-};
-
-using Print = std::function<void(const char*)>;
+using PrintFunction = std::function<void(const char*)>;
 using FunctionArray = std::array<Function, YASH_FUNCTION_ARRAY_SIZE>;
-using FunctionArrayCallback = std::function<FunctionArray&()>;
-
-using FunctionArray2 = std::array<Function2, YASH_FUNCTION_ARRAY_SIZE>;
+using FunctionArrayCallback = std::function<const FunctionArray&()>;
 
 class Yash {
 public:
@@ -61,7 +52,7 @@ public:
 
     /// @brief Sets the print function to be used
     /// @param print The print funcion to be used
-    void setPrint(Print print) { m_printFunction = std::move(print); }
+    void setPrint(PrintFunction printFunction) { m_printFunction = std::move(printFunction); }
 
     /// @brief Prints the specified text using the print function
     /// @param text The text to be printed
@@ -415,7 +406,7 @@ private:
     size_t m_pos{0};
     std::string m_command;
     std::string m_prompt;
-    Print m_printFunction;
+    PrintFunction m_printFunction;
     std::array<char, 256> m_buffer{};
     CtrlState m_ctrlState { CtrlState::None };
     std::string m_ctrlSeq;
