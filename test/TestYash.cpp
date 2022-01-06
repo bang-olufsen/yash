@@ -3,6 +3,7 @@
 #include <catch.hpp>
 
 #define private public
+#define YASH_FUNCTION_ARRAY_SIZE 2
 #include "Yash.h"
 
 using namespace std::string_literals;
@@ -11,21 +12,22 @@ namespace {
 
 MOCK_FUNCTION(print, 1, void(const char*));
 MOCK_FUNCTION(i2c, 1, void(const std::vector<std::string>& args));
-MOCK_FUNCTION(second, 1, void(const std::vector<std::string>& args));
+MOCK_FUNCTION(version, 1, void(const std::vector<std::string>& args));
+
+static constexpr Yash::FunctionArray functionArray {
+    { { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
+    { "version", "Build version", &version, 0 } }
+};
 
 void SetupHistoryPreconditions(Yash::Yash& yash)
 {
-    std::string secondCommand = "version";
-    std::string secondDescription = "Build info";
-    yash.addCommand(secondCommand, secondDescription, &second);
-
     MOCK_EXPECT(print);
 
     MOCK_EXPECT(i2c).once();
     for (char& character : "i2c read 1 2 3\n"s)
         yash.setCharacter(character);
 
-    MOCK_EXPECT(second).once();
+    MOCK_EXPECT(version).once();
     for (char& character : "version\n"s)
         yash.setCharacter(character);
 }
@@ -40,21 +42,14 @@ TEST_CASE("Yash test")
 {
     Yash::Yash yash;
     std::string prompt = "$ ";
-    std::string command = "i2c read";
-    std::string description = "I2C read <addr> <reg> <bytes>";
 
     yash.setPrint(print);
     yash.setPrompt(prompt);
-    yash.addCommand(command, description, &i2c, 3);
+    yash.setFunctionArrayCallback([]() -> const Yash::FunctionArray& { return functionArray; });
 
     SECTION("Test setPrompt function")
     {
         CHECK(yash.m_prompt == prompt);
-    }
-
-    SECTION("Test addCommand function")
-    {
-        CHECK_FALSE(yash.m_functions.empty());
     }
 
     SECTION("Test setCharacter function with line feed input")
@@ -68,7 +63,7 @@ TEST_CASE("Yash test")
     SECTION("Test setCharacter function with 'i2' input")
     {
         std::string testCommand = "i2\n";
-        std::string help = command + "  " + description + "\r\n";
+        std::string help = "i2c read  I2C read <addr> <reg> <bytes>\r\n";
 
         MOCK_EXPECT(print).with("");
         MOCK_EXPECT(print).with("i");
@@ -95,15 +90,11 @@ TEST_CASE("Yash test")
 
     SECTION("Test setCharacter function with 'i' + TAB input and two similar commands")
     {
-        std::string secondCommand = "info";
-        std::string secondDescription = "System info";
-        yash.addCommand(secondCommand, secondDescription, nullptr);
-
         mock::sequence seq;
         MOCK_EXPECT(print).once().in(seq).with("i");
         MOCK_EXPECT(print).once().in(seq).with(mock::any);
-        MOCK_EXPECT(print).once().in(seq).with(command + "  " + description + "\r\n");
-        MOCK_EXPECT(print).once().in(seq).with(secondCommand + "      " + secondDescription + "\r\n");
+        MOCK_EXPECT(print).once().in(seq).with("i2c read  I2C read <addr> <reg> <bytes>\r\n");
+        MOCK_EXPECT(print).once().in(seq).with("version      Build version\r\n");
         MOCK_EXPECT(print).once().in(seq).with(mock::any);
         MOCK_EXPECT(print).once().in(seq).with(prompt.c_str());
         MOCK_EXPECT(print).once().in(seq).with("i");
@@ -196,7 +187,7 @@ TEST_CASE("Yash test")
     {
         SetupHistoryPreconditions(yash);
 
-        MOCK_EXPECT(second).once();
+        MOCK_EXPECT(version).once();
         yash.setCharacter(Yash::Yash::Esc);
         yash.setCharacter(Yash::Yash::LeftBracket);
         yash.setCharacter(Yash::Yash::Up);
@@ -222,7 +213,7 @@ TEST_CASE("Yash test")
     {
         SetupHistoryPreconditions(yash);
 
-        MOCK_EXPECT(second).once();
+        MOCK_EXPECT(version).once();
         yash.setCharacter(Yash::Yash::Esc);
         yash.setCharacter(Yash::Yash::LeftBracket);
         yash.setCharacter(Yash::Yash::Up);
@@ -263,7 +254,7 @@ TEST_CASE("Yash test")
         yash.setCharacter('A');
         yash.setCharacter('\n');
 
-        MOCK_EXPECT(second).never();
+        MOCK_EXPECT(version).never();
         yash.setCharacter('B');
         yash.setCharacter('\n');
     }
@@ -293,16 +284,6 @@ TEST_CASE("Yash test")
         CHECK(yash.m_ctrlState == Yash::Yash::CtrlState::Esc);
         yash.setCharacter(Yash::Yash::LeftBracket);
         CHECK(yash.m_ctrlState == Yash::Yash::CtrlState::LeftBracket);
-    }
-
-    SECTION("Test removeCommand function")
-    {
-        // Try to remove a non-existing command
-        yash.removeCommand("i2");
-        CHECK_FALSE(yash.m_functions.empty());
-
-        yash.removeCommand(command);
-        CHECK(yash.m_functions.empty());
     }
 
     SECTION("Test setCharacter function with 'i21c' and backspace character input")
@@ -561,7 +542,7 @@ TEST_CASE("Yash test")
     {
         SetupHistoryPreconditions(yash);
 
-        MOCK_EXPECT(second).once();
+        MOCK_EXPECT(version).once();
         yash.setCharacter(Yash::Yash::Esc);
         yash.setCharacter(Yash::Yash::LeftBracket);
         yash.setCharacter(Yash::Yash::Up);
@@ -587,7 +568,7 @@ TEST_CASE("Yash test")
     {
         SetupHistoryPreconditions(yash);
 
-        MOCK_EXPECT(second).once();
+        MOCK_EXPECT(version).once();
         yash.setCharacter(Yash::Yash::Esc);
         yash.setCharacter(Yash::Yash::LeftBracket);
         yash.setCharacter(Yash::Yash::Up);
@@ -628,7 +609,7 @@ TEST_CASE("Yash test")
         yash.setCharacter('A');
         yash.setCharacter('\n');
 
-        MOCK_EXPECT(second).never();
+        MOCK_EXPECT(version).never();
         yash.setCharacter('B');
         yash.setCharacter('\n');
     }
@@ -645,7 +626,7 @@ TEST_CASE("Yash test")
         yash.setCharacter('C');
         yash.setCharacter('\n');
 
-        MOCK_EXPECT(second).never();
+        MOCK_EXPECT(version).never();
         yash.setCharacter('D');
         yash.setCharacter('\n');
     }
@@ -662,7 +643,7 @@ TEST_CASE("Yash test")
         yash.setCharacter('C');
         yash.setCharacter('\n');
 
-        MOCK_EXPECT(second).never();
+        MOCK_EXPECT(version).never();
         yash.setCharacter('D');
         yash.setCharacter('\n');
     }

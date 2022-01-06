@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <con.h>
 
+#define YASH_FUNCTION_ARRAY_SIZE 4
+
 #include <Yash.h>
 
 void i2cRead(const std::vector<std::string>& args) {
