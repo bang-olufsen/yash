@@ -12,11 +12,11 @@ namespace {
 
 MOCK_FUNCTION(print, 1, void(const char*));
 MOCK_FUNCTION(i2c, 1, void(const std::vector<std::string>& args));
-MOCK_FUNCTION(version, 1, void(const std::vector<std::string>& args));
+MOCK_FUNCTION(info, 1, void(const std::vector<std::string>& args));
 
 static constexpr Yash::FunctionArray functionArray {
     { { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
-    { "version", "Build version", &version, 0 } }
+    { "info", "System info", &info, 0 } }
 };
 
 void SetupHistoryPreconditions(Yash::Yash& yash)
@@ -27,8 +27,8 @@ void SetupHistoryPreconditions(Yash::Yash& yash)
     for (char& character : "i2c read 1 2 3\n"s)
         yash.setCharacter(character);
 
-    MOCK_EXPECT(version).once();
-    for (char& character : "version\n"s)
+    MOCK_EXPECT(info).once();
+    for (char& character : "info\n"s)
         yash.setCharacter(character);
 }
 
@@ -77,14 +77,16 @@ TEST_CASE("Yash test")
             yash.setCharacter(character);
     }
 
-    SECTION("Test setCharacter function with 'i' + TAB input")
+    SECTION("Test setCharacter function with 'i2' + TAB input")
     {
         mock::sequence seq;
         MOCK_EXPECT(print).once().in(seq).with("i");
+        MOCK_EXPECT(print).once().in(seq).with("2");
         MOCK_EXPECT(print).once().in(seq).with(mock::any);
         MOCK_EXPECT(print).once().in(seq).with(prompt.c_str());
         MOCK_EXPECT(print).once().in(seq).with("i2c read ");
         yash.setCharacter('i');
+        yash.setCharacter('2');
         yash.setCharacter(Yash::Yash::Tab);
     }
 
@@ -94,7 +96,7 @@ TEST_CASE("Yash test")
         MOCK_EXPECT(print).once().in(seq).with("i");
         MOCK_EXPECT(print).once().in(seq).with(mock::any);
         MOCK_EXPECT(print).once().in(seq).with("i2c read  I2C read <addr> <reg> <bytes>\r\n");
-        MOCK_EXPECT(print).once().in(seq).with("version      Build version\r\n");
+        MOCK_EXPECT(print).once().in(seq).with("info      System info\r\n");
         MOCK_EXPECT(print).once().in(seq).with(mock::any);
         MOCK_EXPECT(print).once().in(seq).with(prompt.c_str());
         MOCK_EXPECT(print).once().in(seq).with("i");
@@ -187,7 +189,7 @@ TEST_CASE("Yash test")
     {
         SetupHistoryPreconditions(yash);
 
-        MOCK_EXPECT(version).once();
+        MOCK_EXPECT(info).once();
         yash.setCharacter(Yash::Yash::Esc);
         yash.setCharacter(Yash::Yash::LeftBracket);
         yash.setCharacter(Yash::Yash::Up);
@@ -213,7 +215,7 @@ TEST_CASE("Yash test")
     {
         SetupHistoryPreconditions(yash);
 
-        MOCK_EXPECT(version).once();
+        MOCK_EXPECT(info).once();
         yash.setCharacter(Yash::Yash::Esc);
         yash.setCharacter(Yash::Yash::LeftBracket);
         yash.setCharacter(Yash::Yash::Up);
@@ -254,7 +256,7 @@ TEST_CASE("Yash test")
         yash.setCharacter('A');
         yash.setCharacter('\n');
 
-        MOCK_EXPECT(version).never();
+        MOCK_EXPECT(info).never();
         yash.setCharacter('B');
         yash.setCharacter('\n');
     }
@@ -542,7 +544,7 @@ TEST_CASE("Yash test")
     {
         SetupHistoryPreconditions(yash);
 
-        MOCK_EXPECT(version).once();
+        MOCK_EXPECT(info).once();
         yash.setCharacter(Yash::Yash::Esc);
         yash.setCharacter(Yash::Yash::LeftBracket);
         yash.setCharacter(Yash::Yash::Up);
@@ -568,7 +570,7 @@ TEST_CASE("Yash test")
     {
         SetupHistoryPreconditions(yash);
 
-        MOCK_EXPECT(version).once();
+        MOCK_EXPECT(info).once();
         yash.setCharacter(Yash::Yash::Esc);
         yash.setCharacter(Yash::Yash::LeftBracket);
         yash.setCharacter(Yash::Yash::Up);
@@ -609,7 +611,7 @@ TEST_CASE("Yash test")
         yash.setCharacter('A');
         yash.setCharacter('\n');
 
-        MOCK_EXPECT(version).never();
+        MOCK_EXPECT(info).never();
         yash.setCharacter('B');
         yash.setCharacter('\n');
     }
@@ -626,7 +628,7 @@ TEST_CASE("Yash test")
         yash.setCharacter('C');
         yash.setCharacter('\n');
 
-        MOCK_EXPECT(version).never();
+        MOCK_EXPECT(info).never();
         yash.setCharacter('D');
         yash.setCharacter('\n');
     }
@@ -643,7 +645,7 @@ TEST_CASE("Yash test")
         yash.setCharacter('C');
         yash.setCharacter('\n');
 
-        MOCK_EXPECT(version).never();
+        MOCK_EXPECT(info).never();
         yash.setCharacter('D');
         yash.setCharacter('\n');
     }
