@@ -14,7 +14,7 @@
 #include <string_view>
 
 #ifndef YASH_FUNCTION_ARRAY_SIZE
-#define YASH_FUNCTION_ARRAY_SIZE 4
+#define YASH_FUNCTION_ARRAY_SIZE 10
 #endif
 
 #ifndef YASH_HISTORY_SIZE
@@ -42,8 +42,7 @@ using FunctionArrayCallback = std::function<const FunctionArray&()>;
 class Yash {
 public:
     Yash()
-        : m_commands{}
-        , m_commandsIndex(m_commands.begin())
+        : m_commandsIndex(m_commands.begin())
         , m_printFunction(::printf)
     {
     }
@@ -72,6 +71,8 @@ public:
     /// @param prompt A string with the name to be used
     void setPrompt(const std::string& prompt) { m_prompt = prompt; }
 
+    /// @brief Sets the function array callback
+    /// @param prompt A FunctionArrayCallback with the static funcion array
     void setFunctionArrayCallback(FunctionArrayCallback callback) { m_functionArrayCallback = callback; }
 
     /// @brief Sets a received character on the shell
@@ -301,6 +302,9 @@ private:
 
     void runCommand()
     {
+        if (!m_functionArrayCallback)
+            return;
+
         std::vector<std::string> arguments;
         for (const auto& function : m_functionArrayCallback()) {
             if (!m_command.compare(0, function.m_command.size(), function.m_command)) {
@@ -347,6 +351,9 @@ private:
 
     void printDescriptions(bool autoComplete = false)
     {
+        if (!m_functionArrayCallback)
+            return;
+
         std::map<std::string, std::string> descriptions;
         for (const auto& function : m_functionArrayCallback()) {
             if (!m_command.empty() && !std::memcmp(function.m_command.data(), m_command.data(), std::min(m_command.size(), function.m_command.size())))
