@@ -1,24 +1,5 @@
-// The MIT License (MIT)
-
-// Copyright (c) 2021 Bang & Olufsen a/s
-
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// Copyright 2022 - Bang & Olufsen a/s
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -32,14 +13,40 @@
 #include <vector>
 #include <string_view>
 
+#ifndef YASH_FUNCTION_ARRAY_SIZE
+#define YASH_FUNCTION_ARRAY_SIZE 1
+#endif
+
 #ifndef YASH_HISTORY_SIZE
 #define YASH_HISTORY_SIZE 10
 #endif
 
 namespace Yash {
 
-using YashPrint = std::function<void(const char*)>;
-using YashFunction = std::function<void(const std::vector<std::string>&)>;
+struct Function {
+public:
+    Function() = default;
+
+    std::string_view m_command;
+    std::string_view m_description;
+    std::function<void(const std::vector<std::string>&)> m_function;
+    size_t m_requiredArguments;
+};
+
+struct Function2 {
+public:
+    Function2() = default;
+
+    std::string_view m_command;
+    std::string_view m_description;
+    size_t m_requiredArguments;
+};
+
+using Print = std::function<void(const char*)>;
+using FunctionArray = std::array<Function, YASH_FUNCTION_ARRAY_SIZE>;
+using FunctionArrayCallback = std::function<FunctionArray&()>;
+
+using FunctionArray2 = std::array<Function2, YASH_FUNCTION_ARRAY_SIZE>;
 
 class Yash {
 public:
@@ -53,8 +60,8 @@ public:
     ~Yash() = default;
 
     /// @brief Sets the print function to be used
-    /// @param print The YashPrint funcion to be used
-    void setPrint(YashPrint print) { m_printFunction = std::move(print); }
+    /// @param print The print funcion to be used
+    void setPrint(Print print) { m_printFunction = std::move(print); }
 
     /// @brief Prints the specified text using the print function
     /// @param text The text to be printed
@@ -74,22 +81,7 @@ public:
     /// @param prompt A string with the name to be used
     void setPrompt(const std::string& prompt) { m_prompt = prompt; }
 
-    /// @brief Adds a command to the shell
-    /// @param command A string_view with the name of the command. Subcommands must be delimited with a space (e.g. "i2c scan")
-    /// @param description A string with the command description
-    /// @param function A YashFunction to be called when the command is executed
-    /// @param requiredArguments A size_t with the number of required arguments (default 0)
-    void addCommand(std::string_view command, std::string_view description, YashFunction function, size_t requiredArguments = 0)
-    {
-        m_functions.emplace(command, Function(description, std::move(function), requiredArguments));
-    }
-
-    /// @brief Removes a command from the shell
-    /// @param command A string_view with the name of the command
-    void removeCommand(std::string_view command)
-    {
-        m_functions.erase(command);
-    }
+    void setFunctionArrayCallback(FunctionArrayCallback callback) { m_functionArrayCallback = callback; }
 
     /// @brief Sets a received character on the shell
     /// @param character The character to be set
@@ -304,16 +296,6 @@ private:
         LeftBracket
     };
 
-    struct Function {
-        Function(std::string_view description, YashFunction function, size_t requiredArguments)
-            : m_description(std::move(description))
-            , m_function(std::move(function))
-            , m_requiredArguments(requiredArguments) {}
-
-        std::string_view m_description;
-        YashFunction m_function;
-        size_t m_requiredArguments;
-    };
     enum class CtrlSeq {
         Up,
         Down,
@@ -329,9 +311,9 @@ private:
     void runCommand()
     {
         std::vector<std::string> arguments;
-        for (const auto& [command, function] : m_functions) {
-            if (!m_command.compare(0, command.size(), command)) {
-                auto args = m_command.substr(command.size());
+        for (const auto& function : m_functionArrayCallback()) {
+            if (!m_command.compare(0, function.m_command.size(), function.m_command)) {
+                auto args = m_command.substr(function.m_command.size());
                 char *token = std::strtok(args.data(), s_commandDelimiter);
                 while (token) {
                     arguments.emplace_back(token);
@@ -375,9 +357,9 @@ private:
     void printDescriptions(bool autoComplete = false)
     {
         std::map<std::string, std::string> descriptions;
-        for (const auto& [command, function] : m_functions) {
-            if (!m_command.empty() && !std::memcmp(command.data(), m_command.data(), std::min(m_command.size(), command.size())))
-                descriptions.emplace(command, function.m_description);
+        for (const auto& function : m_functionArrayCallback()) {
+            if (!m_command.empty() && !std::memcmp(function.m_command.data(), m_command.data(), std::min(m_command.size(), function.m_command.size())))
+                descriptions.emplace(function.m_command, function.m_description);
         }
 
         if ((descriptions.size() == 1) && autoComplete) {
@@ -388,16 +370,16 @@ private:
             }
         } else {
             if (descriptions.empty()) {
-                for (const auto& [command, function] : m_functions) {
-                    auto position = command.find_first_of(s_commandDelimiter);
+                for (const auto& function : m_functionArrayCallback()) {
+                    auto position = function.m_command.find_first_of(s_commandDelimiter);
                     if (position != std::string::npos) {
-                        auto firstCommandView = command.substr(0, position);
+                        auto firstCommandView = function.m_command.substr(0, position);
                         std::string firstCommand = {firstCommandView.begin(), firstCommandView.end()};
                         firstCommand[0] = toupper(firstCommand[0]);
-                        descriptions.emplace(command.substr(0, position), firstCommand + " commands");
+                        descriptions.emplace(function.m_command.substr(0, position), firstCommand + " commands");
                     }
                     else
-                        descriptions.emplace(command, function.m_description);
+                        descriptions.emplace(function.m_command, function.m_description);
                 }
             } else {
                 std::string firstCommand;
@@ -427,13 +409,13 @@ private:
     static constexpr const char* s_moveCursorForward = "\033[1C";
     static constexpr const char* s_moveCursorBackward = "\033[1D";
     static constexpr const char* s_commandDelimiter = " ";
-    std::map<std::string_view, Function> m_functions;
+    FunctionArrayCallback m_functionArrayCallback;
     std::vector<std::string> m_commands;
     std::vector<std::string>::const_iterator m_commandsIndex;
     size_t m_pos{0};
     std::string m_command;
     std::string m_prompt;
-    YashPrint m_printFunction;
+    Print m_printFunction;
     std::array<char, 256> m_buffer{};
     CtrlState m_ctrlState { CtrlState::None };
     std::string m_ctrlSeq;
