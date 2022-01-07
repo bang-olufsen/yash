@@ -3,7 +3,6 @@
 #include <catch.hpp>
 
 #define private public
-#define YASH_COMMAND_ARRAY_SIZE 2
 #include "Yash.h"
 
 using namespace std::string_literals;
@@ -14,12 +13,15 @@ MOCK_FUNCTION(print, 1, void(const char*));
 MOCK_FUNCTION(i2c, 1, void(const std::vector<std::string>& args));
 MOCK_FUNCTION(info, 1, void(const std::vector<std::string>& args));
 
-static constexpr Yash::CommandArray commandArray {
+static constexpr std::array<Yash::Command, 2> commands {
     { { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
     { "info", "System info", &info, 0 } }
 };
 
-void SetupHistoryPreconditions(Yash::Yash& yash)
+static constexpr int historySize { 10 };
+Yash::Yash<std::size(commands)> yash(historySize);
+
+void SetupHistoryPreconditions()
 {
     MOCK_EXPECT(print);
 
@@ -40,12 +42,11 @@ constexpr const char *s_moveCursorBackward = "\033[1D";
 
 TEST_CASE("Yash test")
 {
-    Yash::Yash yash;
     std::string prompt = "$ ";
 
     yash.setPrint(print);
     yash.setPrompt(prompt);
-    yash.setCommandArrayCallback([]() -> const Yash::CommandArray& { return commandArray; });
+    yash.setCommandsCallback([]() -> const auto& { return commands; });
 
     SECTION("Test setPrompt function")
     {
@@ -87,7 +88,7 @@ TEST_CASE("Yash test")
         MOCK_EXPECT(print).once().in(seq).with("i2c read ");
         yash.setCharacter('i');
         yash.setCharacter('2');
-        yash.setCharacter(Yash::Yash::Tab);
+        yash.setCharacter(yash.Tab);
     }
 
     SECTION("Test setCharacter function with 'i' + TAB input and two similar commands")
@@ -101,7 +102,7 @@ TEST_CASE("Yash test")
         MOCK_EXPECT(print).once().in(seq).with(prompt.c_str());
         MOCK_EXPECT(print).once().in(seq).with("i");
         yash.setCharacter('i');
-        yash.setCharacter(Yash::Yash::Tab);
+        yash.setCharacter(yash.Tab);
     }
 
     SECTION("Test enter not at command end")
@@ -115,22 +116,19 @@ TEST_CASE("Yash test")
         yash.setCharacter('c'); // pos 2
 
         MOCK_EXPECT(print).exactly(3).with(s_moveCursorBackward).in(seq);
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
         yash.setCharacter('1');
         yash.setCharacter(';');
         yash.setCharacter('5');
         yash.setCharacter('D');
-
 
         MOCK_EXPECT(print).once().with('C').in(seq);
         MOCK_EXPECT(print).once().with("i").in(seq);
         MOCK_EXPECT(print).once().with("2").in(seq);
         MOCK_EXPECT(print).once().with("c").in(seq);
         MOCK_EXPECT(print).exactly(3).with(s_moveCursorBackward).in(seq);
-        yash.setCharacter(Yash::Yash::Right);
-
-
+        yash.setCharacter(yash.Right);
     }
 
     SECTION("Test setCharacter function with 'i2c read 1 2 3' input")
@@ -169,7 +167,7 @@ TEST_CASE("Yash test")
 
         CHECK_FALSE(yash.m_command.empty());
 
-        yash.setCharacter(Yash::Yash::EndOfText);
+        yash.setCharacter(yash.EndOfText);
         CHECK(yash.m_command.empty());
     }
 
@@ -187,69 +185,69 @@ TEST_CASE("Yash test")
 
     SECTION("Test setCharacter with up character input")
     {
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
         MOCK_EXPECT(info).once();
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
         yash.setCharacter('\n');
     }
 
     SECTION("Test setCharacter with up-up character input")
     {
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
         MOCK_EXPECT(i2c).once();
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
         yash.setCharacter('\n');
     }
 
     SECTION("Test setCharacter with up-up-down character input")
     {
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
         MOCK_EXPECT(info).once();
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Down);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Down);
         yash.setCharacter('\n');
     }
 
     SECTION("Test setCharacter with up-down character input")
     {
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Down);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Down);
         yash.setCharacter('\n');
     }
 
     SECTION("Test setCharacter A, B does not do Up, Down")
     {
-        CHECK(Yash::Yash::Character::Up == 'A');
-        CHECK(Yash::Yash::Character::Down == 'B');
+        CHECK(yash.Character::Up == 'A');
+        CHECK(yash.Character::Down == 'B');
 
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
         MOCK_EXPECT(i2c).never();
         yash.setCharacter('A');
@@ -270,22 +268,22 @@ TEST_CASE("Yash test")
             yash.setCharacter(character);
 
         // Fill up the history queue so the i2c command overflows
-        for (auto i { 0 }; i < YASH_HISTORY_SIZE; ++i) {
+        for (auto i { 0 }; i < historySize; ++i) {
             for (char& character : "foo\n"s)
                 yash.setCharacter(character);
         }
 
-        for (auto i { 0 }; i <= YASH_HISTORY_SIZE; ++i)
-            yash.setCharacter(Yash::Yash::Up);
+        for (auto i { 0 }; i <= historySize; ++i)
+            yash.setCharacter(yash.Up);
         yash.setCharacter('\n');
     }
 
     SECTION("Test setCharacter function with ESC/LeftBracket input")
     {
-        yash.setCharacter(Yash::Yash::Esc);
-        CHECK(yash.m_ctrlState == Yash::Yash::CtrlState::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        CHECK(yash.m_ctrlState == Yash::Yash::CtrlState::LeftBracket);
+        yash.setCharacter(yash.Esc);
+        CHECK(yash.m_ctrlState == yash.CtrlState::Esc);
+        yash.setCharacter(yash.LeftBracket);
+        CHECK(yash.m_ctrlState == yash.CtrlState::LeftBracket);
     }
 
     SECTION("Test setCharacter function with 'i21c' and backspace character input")
@@ -299,15 +297,15 @@ TEST_CASE("Yash test")
         yash.setCharacter('1');
         yash.setCharacter('c');
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Left);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Left);
 
-        yash.setCharacter(Yash::Yash::Backspace);
+        yash.setCharacter(yash.Backspace);
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Right);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Right);
 
         yash.setCharacter('\n');
     }
@@ -331,15 +329,15 @@ TEST_CASE("Yash test")
             // move cursor back 3 steps to char 'i' @pos 0
             mock::sequence seq;
             MOCK_EXPECT(print).exactly(3).with(s_moveCursorBackward).in(seq);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
-            yash.setCharacter(Yash::Yash::Left);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
-            yash.setCharacter(Yash::Yash::Left);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
-            yash.setCharacter(Yash::Yash::Left);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
+            yash.setCharacter(yash.Left);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
+            yash.setCharacter(yash.Left);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
+            yash.setCharacter(yash.Left);
             mock::verify();
             mock::reset();
         }
@@ -348,15 +346,15 @@ TEST_CASE("Yash test")
             // move cursor forward 3 steps to end @pos 3
             mock::sequence seq;
             MOCK_EXPECT(print).exactly(3).with(s_moveCursorForward).in(seq);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
-            yash.setCharacter(Yash::Yash::Right);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
-            yash.setCharacter(Yash::Yash::Right);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
-            yash.setCharacter(Yash::Yash::Right);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
+            yash.setCharacter(yash.Right);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
+            yash.setCharacter(yash.Right);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
+            yash.setCharacter(yash.Right);
             mock::verify();
             mock::reset();
         }
@@ -381,12 +379,12 @@ TEST_CASE("Yash test")
             // move cursor back 2 steps to char '2' @pos 1
             mock::sequence seq;
             MOCK_EXPECT(print).exactly(2).with(s_moveCursorBackward).in(seq);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
-            yash.setCharacter(Yash::Yash::Left);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
-            yash.setCharacter(Yash::Yash::Left);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
+            yash.setCharacter(yash.Left);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
+            yash.setCharacter(yash.Left);
             mock::verify();
             mock::reset();
         }
@@ -400,8 +398,8 @@ TEST_CASE("Yash test")
             MOCK_EXPECT(print).once().with(" ").in(seq);
             MOCK_EXPECT(print).once().with(s_clearCharacter).in(seq);
             MOCK_EXPECT(print).exactly(1).with(s_moveCursorBackward).in(seq);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
             yash.setCharacter('3');
             yash.setCharacter('~');
             mock::verify();
@@ -438,8 +436,8 @@ TEST_CASE("Yash test")
             // Generate home key press to set cursor position to the beginning @pos 0
             mock::sequence seq;
             MOCK_EXPECT(print).exactly(7).with(s_moveCursorBackward).in(seq);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
             yash.setCharacter('1');
             yash.setCharacter('~');
             mock::verify();
@@ -450,8 +448,8 @@ TEST_CASE("Yash test")
             // Generate end key press to set cursor position to the end again @pos 7
             mock::sequence seq;
             MOCK_EXPECT(print).exactly(7).with(s_moveCursorForward).in(seq);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
             yash.setCharacter('4');
             yash.setCharacter('~');
             mock::verify();
@@ -487,8 +485,8 @@ TEST_CASE("Yash test")
             mock::sequence seq;
             MOCK_EXPECT(print).exactly(4).with(s_moveCursorBackward).in(seq);
             MOCK_EXPECT(print).once().with(s_moveCursorForward).in(seq);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
             yash.setCharacter('1');
             yash.setCharacter(';');
             yash.setCharacter('5');
@@ -501,8 +499,8 @@ TEST_CASE("Yash test")
             // Generate ctrl+left key press to set cursor position to the 'i' @pos 0
             mock::sequence seq;
             MOCK_EXPECT(print).exactly(4).with(s_moveCursorBackward).in(seq);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
             yash.setCharacter('1');
             yash.setCharacter(';');
             yash.setCharacter('5');
@@ -515,8 +513,8 @@ TEST_CASE("Yash test")
             // Generate ctrl+right key press to set cursor position to the space @pos 3
             mock::sequence seq;
             MOCK_EXPECT(print).exactly(3).with(s_moveCursorForward).in(seq);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
             yash.setCharacter('1');
             yash.setCharacter(';');
             yash.setCharacter('5');
@@ -529,8 +527,8 @@ TEST_CASE("Yash test")
             // Generate ctrl+right key press to set cursor position to the end again @pos 7
             mock::sequence seq;
             MOCK_EXPECT(print).exactly(4).with(s_moveCursorForward).in(seq);
-            yash.setCharacter(Yash::Yash::Esc);
-            yash.setCharacter(Yash::Yash::LeftBracket);
+            yash.setCharacter(yash.Esc);
+            yash.setCharacter(yash.LeftBracket);
             yash.setCharacter('1');
             yash.setCharacter(';');
             yash.setCharacter('5');
@@ -542,69 +540,69 @@ TEST_CASE("Yash test")
 
     SECTION("Test setCharacter with up character input")
     {
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
         MOCK_EXPECT(info).once();
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
         yash.setCharacter('\n');
     }
 
     SECTION("Test setCharacter with up-up character input")
     {
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
         MOCK_EXPECT(i2c).once();
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
         yash.setCharacter('\n');
     }
 
     SECTION("Test setCharacter with up-up-down character input")
     {
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
         MOCK_EXPECT(info).once();
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Down);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Down);
         yash.setCharacter('\n');
     }
 
     SECTION("Test setCharacter with up-down character input")
     {
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Up);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Up);
 
-        yash.setCharacter(Yash::Yash::Esc);
-        yash.setCharacter(Yash::Yash::LeftBracket);
-        yash.setCharacter(Yash::Yash::Down);
+        yash.setCharacter(yash.Esc);
+        yash.setCharacter(yash.LeftBracket);
+        yash.setCharacter(yash.Down);
         yash.setCharacter('\n');
     }
 
     SECTION("Test setCharacter A, B does not do Up, Down")
     {
-        CHECK(Yash::Yash::Character::Up == 'A');
-        CHECK(Yash::Yash::Character::Down == 'B');
+        CHECK(yash.Character::Up == 'A');
+        CHECK(yash.Character::Down == 'B');
 
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
         MOCK_EXPECT(i2c).never();
         yash.setCharacter('A');
@@ -618,10 +616,10 @@ TEST_CASE("Yash test")
 
     SECTION("Test setCharacter C, D does not do Right, Left")
     {
-        CHECK(Yash::Yash::Character::Right == 'C');
-        CHECK(Yash::Yash::Character::Left == 'D');
+        CHECK(yash.Character::Right == 'C');
+        CHECK(yash.Character::Left == 'D');
 
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
         MOCK_EXPECT(i2c).never();
         yash.setCharacter('C');
@@ -635,10 +633,10 @@ TEST_CASE("Yash test")
 
     SECTION("Test setCharacter C, D does not do Right, Left")
     {
-        CHECK(Yash::Yash::Character::Right == 'C');
-        CHECK(Yash::Yash::Character::Left == 'D');
+        CHECK(yash.Character::Right == 'C');
+        CHECK(yash.Character::Left == 'D');
 
-        SetupHistoryPreconditions(yash);
+        SetupHistoryPreconditions();
 
         MOCK_EXPECT(i2c).never();
         yash.setCharacter('C');
