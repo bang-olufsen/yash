@@ -1,8 +1,6 @@
 // Copyright 2021 - Bang & Olufsen a/s
 #include <stdlib.h>
 #include <con.h>
-
-#define YASH_COMMAND_ARRAY_SIZE 4
 #include <Yash.h>
 
 void i2cRead(const std::vector<std::string>& args) {
@@ -22,17 +20,17 @@ void version(const std::vector<std::string>&) {
 }
 
 int main() {
-    static constexpr Yash::CommandArray commandArray {
+    static constexpr std::array<Yash::Command, 4> commands {
         { { "i2c read", "I2C read <addr> <reg> <bytes>", [](const auto& args) { i2cRead(args); }, 3 },
         { "i2c write", "I2C write <addr> <reg> <value>", [](const auto& args) { i2cWrite(args); }, 3},
         { "info", "System info", [](const auto& args) { info(args); }, 0 },
         { "version", "Build version", [](const auto& args) { version(args); }, 0 } }
     };
 
-    Yash::Yash yash;
+    Yash::Yash<std::size(commands)> yash;
     yash.setPrint([&](const char* str) { printf("%s", str); });
     yash.setPrompt("$ ");
-    yash.setCommandArrayCallback([]() -> const Yash::CommandArray& { return commandArray; });
+    yash.setCommandsCallback([]() { return commands; });
 
     while (true)
         yash.setCharacter(getch());
