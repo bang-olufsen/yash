@@ -17,20 +17,18 @@ namespace Yash {
 
 typedef void (*CommandFunction)(const std::vector<std::string>&);
 
-class Command {
-public:
-    std::string_view m_name;
-    std::string_view m_description;
-    CommandFunction m_function;
-    size_t m_requiredArguments;
+struct Command {
+    std::string_view name;
+    std::string_view description;
+    CommandFunction function;
+    size_t requiredArguments;
 };
 
-template <size_t TCommandArraySize, size_t TBufferSize = 128>
+template <size_t TCommandArraySize>
 class Yash {
 public:
     Yash(size_t historySize = 10)
         : m_historySize(historySize)
-        , m_printFunction(::printf)
         , m_commandsIndex(m_commands.begin())
     {
     }
@@ -43,16 +41,9 @@ public:
 
     /// @brief Prints the specified text using the print function
     /// @param text The text to be printed
-    void print(const char* text) const { m_printFunction(text); }
-
-    /// @brief Prints the specified text using the print function. Printf style formating can be used
-    void printf(const char* fmt, ...)
-    {
-        std::va_list arg;
-        va_start(arg, fmt);
-        vsnprintf(m_buffer.data(), m_buffer.size(), fmt, arg);
-        va_end(arg);
-        m_printFunction(m_buffer.data());
+    void print(const char* text) const {
+        if (m_printFunction)
+            m_printFunction(text);
     }
 
     /// @brief Sets the name of the shell prompt
@@ -61,7 +52,7 @@ public:
 
     /// @brief Sets the commands callback
     /// @param callback A commands callback with a reference to the command array
-    void setCommandsCallback(std::function<const std::array<Command, TCommandArraySize>&()> callback) { m_commandsCallback = callback; }
+    void setCommandsCallback(std::function<const std::array<Command, TCommandArraySize>&()> callback) { m_commandsCallback = std::move(callback); }
 
     /// @brief Sets a received character on the shell
     /// @param character The character to be set
@@ -100,16 +91,14 @@ public:
                     m_command.erase(--m_position, 1);
                     print(s_moveCursorBackward);
 
-                    for (size_t i = m_position; i < m_command.length(); i++) {
+                    for (size_t i = m_position; i < m_command.length(); i++)
                         print(std::string(1, m_command.at(i)).c_str());
-                    }
 
                     print(std::string(1, ' ').c_str());
                     print(s_clearCharacter); // clear unused char at the end
 
-                    for (size_t i = m_position; i < m_command.length(); i++) {
+                    for (size_t i = m_position; i < m_command.length(); i++)
                         print(s_moveCursorBackward);
-                    }
                 }
             }
             break;
@@ -127,19 +116,19 @@ public:
             return;
         default:
             if (m_ctrlState == CtrlState::LeftBracket) {
-                m_ctrlSeq += character;
-                for (const auto &it : m_supportedCtrlSeq) {
-                    if (m_ctrlSeq.compare(0, m_ctrlSeq.length(), it.first, 0, m_ctrlSeq.length()) == 0) {
-                        if (m_ctrlSeq.length() == it.first.length()) {
-                            switch (it.second) {
-                            case CtrlSeq::Up:
+                m_ctrlCharacter += character;
+                for (const auto& ctrlCharacter : s_ctrlCharacters) {
+                    if (m_ctrlCharacter.compare(0, m_ctrlCharacter.length(), ctrlCharacter.name, 0, m_ctrlCharacter.length()) == 0) {
+                        if (m_ctrlCharacter.length() == ctrlCharacter.name.length()) {
+                            switch (ctrlCharacter.character) {
+                            case CtrlCharacter::Up:
                                 if (m_commandsIndex != m_commands.begin()) {
                                     m_command = *--m_commandsIndex;
                                     printCommand();
                                     m_position = m_command.length();
                                 }
                                 break;
-                            case CtrlSeq::Down:
+                            case CtrlCharacter::Down:
                                 if (m_commandsIndex != m_commands.end()) {
                                     ++m_commandsIndex;
                                     if (m_commandsIndex != m_commands.end()) {
@@ -151,50 +140,48 @@ public:
                                     m_position = m_command.length();
                                 }
                                 break;
-                            case CtrlSeq::Right:
+                            case CtrlCharacter::Right:
                                 if (m_position != m_command.length()) {
                                     print(s_moveCursorForward);
                                     m_position++;
                                 }
                                 break;
-                            case CtrlSeq::Left:
+                            case CtrlCharacter::Left:
                                 if (m_position) {
                                     print(s_moveCursorBackward);
                                     m_position--;
                                 }
                                 break;
-                            case CtrlSeq::Home:
+                            case CtrlCharacter::Home:
                                 while (m_position) {
                                     print(s_moveCursorBackward);
                                     m_position--;
                                 }
                                 break;
-                            case CtrlSeq::Delete:
+                            case CtrlCharacter::Delete:
                                 if (m_position != m_command.length()) {
                                     m_command.erase(m_position, 1);
 
                                     print(std::string(1, ' ').c_str());
                                     print(s_clearCharacter); // clear deleted char
 
-                                    for (size_t i = m_position; i < m_command.length(); i++) {
+                                    for (size_t i = m_position; i < m_command.length(); i++)
                                         print(std::string(1, m_command.at(i)).c_str());
-                                    }
 
                                     print(std::string(1, ' ').c_str());
                                     print(s_clearCharacter); // clear unused char at the end
 
-                                    for (size_t i = m_position; i < m_command.length(); i++) {
+                                    for (size_t i = m_position; i < m_command.length(); i++)
                                         print(s_moveCursorBackward);
-                                    }
                                 }
                                 break;
-                            case CtrlSeq::End:
+                            case CtrlCharacter::End:
                                 while (m_position != m_command.length()) {
                                     print(s_moveCursorForward);
                                     m_position++;
                                 }
                                 break;
-                            case CtrlSeq::CtrlRight:
+                            case CtrlCharacter::CtrlRight:
                                 while (m_position != m_command.length() && m_command.at(m_position) == ' ') { // skip spaces until we find the first char
                                     print(s_moveCursorForward);
                                     m_position++;
@@ -204,7 +191,7 @@ public:
                                     m_position++;
                                 }
                                 break;
-                            case CtrlSeq::CtrlLeft:
+                            case CtrlCharacter::CtrlLeft:
                                 if (m_position && m_position == m_command.length()) { // step inside the m_command range
                                     print(s_moveCursorBackward);
                                     m_position--;
@@ -227,12 +214,11 @@ public:
                                 }
                                 break;
                             }
-                        } else {
+                        } else
                             return; // check the next ctrl character
-                        }
                     }
                 }
-                m_ctrlSeq.clear();
+                m_ctrlCharacter.clear();
             } else {
                 if (m_position == m_command.length()) {
                     print(std::string(1, character).c_str());
@@ -242,12 +228,10 @@ public:
                     print(std::string(1, character).c_str());
                     m_command.insert(m_position++, 1, character);
 
-                    for (size_t i = m_position; i < m_command.length(); i++) {
+                    for (size_t i = m_position; i < m_command.length(); i++)
                         print(std::string(1, m_command.at(i)).c_str());
-                    }
-                    for (size_t i = m_position; i < m_command.length(); i++) {
+                    for (size_t i = m_position; i < m_command.length(); i++)
                         print(s_moveCursorBackward);
-                    }
                 }
             }
             break;
@@ -276,7 +260,7 @@ private:
         LeftBracket
     };
 
-    enum class CtrlSeq {
+    enum class CtrlCharacter {
         Up,
         Down,
         Right,
@@ -295,16 +279,16 @@ private:
 
         std::vector<std::string> arguments;
         for (const auto& command : m_commandsCallback()) {
-            if (!m_command.compare(0, command.m_name.size(), command.m_name)) {
-                auto args = m_command.substr(command.m_name.size());
+            if (!m_command.compare(0, command.name.size(), command.name)) {
+                auto args = m_command.substr(command.name.size());
                 char *token = std::strtok(args.data(), s_commandDelimiter);
                 while (token) {
                     arguments.emplace_back(token);
                     token = std::strtok(nullptr, s_commandDelimiter);
                 }
 
-                if (arguments.size() >= command.m_requiredArguments) {
-                    command.m_function(arguments);
+                if (arguments.size() >= command.requiredArguments) {
+                    command.function(arguments);
                     print(m_prompt.c_str());
                     return;
                 }
@@ -344,8 +328,8 @@ private:
 
         std::map<std::string, std::string> descriptions;
         for (const auto& command : m_commandsCallback()) {
-            if (!m_command.empty() && !std::memcmp(command.m_name.data(), m_command.data(), std::min(m_command.size(), command.m_name.size())))
-                descriptions.emplace(command.m_name, command.m_description);
+            if (!m_command.empty() && !std::memcmp(command.name.data(), m_command.data(), std::min(m_command.size(), command.name.size())))
+                descriptions.emplace(command.name, command.description);
         }
 
         if ((descriptions.size() == 1) && autoComplete) {
@@ -357,15 +341,15 @@ private:
         } else {
             if (descriptions.empty()) {
                 for (const auto& command : m_commandsCallback()) {
-                    auto position = command.m_name.find_first_of(s_commandDelimiter);
+                    auto position = command.name.find_first_of(s_commandDelimiter);
                     if (position != std::string::npos) {
-                        auto firstCommandView = command.m_name.substr(0, position);
+                        auto firstCommandView = command.name.substr(0, position);
                         std::string firstCommand = {firstCommandView.begin(), firstCommandView.end()};
                         firstCommand[0] = toupper(firstCommand[0]);
-                        descriptions.emplace(command.m_name.substr(0, position), firstCommand + " commands");
+                        descriptions.emplace(command.name.substr(0, position), firstCommand + " commands");
                     }
                     else
-                        descriptions.emplace(command.m_name, command.m_description);
+                        descriptions.emplace(command.name, command.description);
                 }
             } else {
                 std::string firstCommand;
@@ -396,28 +380,33 @@ private:
     static constexpr const char* s_moveCursorBackward = "\033[1D";
     static constexpr const char* s_commandDelimiter = " ";
 
+    struct CtrlCharacterMapping {
+        std::string_view name;
+        CtrlCharacter character;
+    };
+
+    static constexpr std::array<CtrlCharacterMapping, 9> s_ctrlCharacters {
+        { {"A", CtrlCharacter::Up},
+        {"B", CtrlCharacter::Down},
+        {"C", CtrlCharacter::Right},
+        {"D", CtrlCharacter::Left},
+        {"1~", CtrlCharacter::Home},
+        {"3~", CtrlCharacter::Delete},
+        {"4~", CtrlCharacter::End},
+        {"1;5C", CtrlCharacter::CtrlRight},
+        {"1;5D", CtrlCharacter::CtrlLeft} }
+    };
+
     size_t m_position {0};
     size_t m_historySize {0};
+    CtrlState m_ctrlState { CtrlState::None };
     std::function<const std::array<Command, TCommandArraySize>&()> m_commandsCallback;
     std::function<void(const char*)> m_printFunction;
     std::vector<std::string> m_commands;
     std::vector<std::string>::const_iterator m_commandsIndex;
     std::string m_command;
     std::string m_prompt;
-    std::array<char, TBufferSize> m_buffer{};
-    CtrlState m_ctrlState { CtrlState::None };
-    std::string m_ctrlSeq;
-    const std::map<std::string, CtrlSeq> m_supportedCtrlSeq = {
-        {"A", CtrlSeq::Up},
-        {"B", CtrlSeq::Down},
-        {"C", CtrlSeq::Right},
-        {"D", CtrlSeq::Left},
-        {"1~", CtrlSeq::Home},
-        {"3~", CtrlSeq::Delete},
-        {"4~", CtrlSeq::End},
-        {"1;5C", CtrlSeq::CtrlRight},
-        {"1;5D", CtrlSeq::CtrlLeft}
-    };
+    std::string m_ctrlCharacter;
 };
 
 } // namespace Yash

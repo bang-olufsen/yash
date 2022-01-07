@@ -1,4 +1,6 @@
-// Copyright 2021 - Bang & Olufsen a/s
+// Copyright 2022 - Bang & Olufsen a/s
+// SPDX-License-Identifier: MIT
+
 #include <stdlib.h>
 #include <con.h>
 #include <Yash.h>
@@ -27,7 +29,7 @@ int main() {
         { "version", "Build version", [](const auto& args) { version(args); }, 0 } }
     };
 
-    Yash::Yash<std::size(commands)> yash;
+    Yash::Yash<4> yash;
     yash.setPrint([&](const char* str) { printf("%s", str); });
     yash.setPrompt("$ ");
     yash.setCommandsCallback([]() { return commands; });
