@@ -3,7 +3,7 @@
 #include <catch.hpp>
 
 #define private public
-#define YASH_FUNCTION_ARRAY_SIZE 2
+#define YASH_COMMAND_ARRAY_SIZE 2
 #include "Yash.h"
 
 using namespace std::string_literals;
@@ -14,7 +14,7 @@ MOCK_FUNCTION(print, 1, void(const char*));
 MOCK_FUNCTION(i2c, 1, void(const std::vector<std::string>& args));
 MOCK_FUNCTION(info, 1, void(const std::vector<std::string>& args));
 
-static constexpr Yash::FunctionArray functionArray {
+static constexpr Yash::CommandArray commandArray {
     { { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
     { "info", "System info", &info, 0 } }
 };
@@ -45,7 +45,7 @@ TEST_CASE("Yash test")
 
     yash.setPrint(print);
     yash.setPrompt(prompt);
-    yash.setFunctionArrayCallback([]() -> const Yash::FunctionArray& { return functionArray; });
+    yash.setCommandArrayCallback([]() -> const Yash::CommandArray& { return commandArray; });
 
     SECTION("Test setPrompt function")
     {

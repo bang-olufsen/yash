@@ -2,8 +2,7 @@
 #include <stdlib.h>
 #include <con.h>
 
-#define YASH_FUNCTION_ARRAY_SIZE 4
-
+#define YASH_COMMAND_ARRAY_SIZE 4
 #include <Yash.h>
 
 void i2cRead(const std::vector<std::string>& args) {
@@ -23,7 +22,7 @@ void version(const std::vector<std::string>&) {
 }
 
 int main() {
-    static constexpr Yash::FunctionArray functionArray {
+    static constexpr Yash::CommandArray commandArray {
         { { "i2c read", "I2C read <addr> <reg> <bytes>", [](const auto& args) { i2cRead(args); }, 3 },
         { "i2c write", "I2C write <addr> <reg> <value>", [](const auto& args) { i2cWrite(args); }, 3},
         { "info", "System info", [](const auto& args) { info(args); }, 0 },
@@ -33,7 +32,7 @@ int main() {
     Yash::Yash yash;
     yash.setPrint([&](const char* str) { printf("%s", str); });
     yash.setPrompt("$ ");
-    yash.setFunctionArrayCallback([]() -> const Yash::FunctionArray& { return functionArray; });
+    yash.setCommandArrayCallback([]() -> const Yash::CommandArray& { return commandArray; });
 
     while (true)
         yash.setCharacter(getch());

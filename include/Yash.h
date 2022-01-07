@@ -13,8 +13,8 @@
 #include <vector>
 #include <string_view>
 
-#ifndef YASH_FUNCTION_ARRAY_SIZE
-#define YASH_FUNCTION_ARRAY_SIZE 10
+#ifndef YASH_COMMAND_ARRAY_SIZE
+#define YASH_COMMAND_ARRAY_SIZE 10
 #endif
 
 #ifndef YASH_HISTORY_SIZE
@@ -25,19 +25,17 @@ namespace Yash {
 
 typedef void (*CommandFunction)(const std::vector<std::string>&);
 
-class Function {
+class Command {
 public:
-    Function() = default;
-
-    std::string_view m_command;
+    std::string_view m_name;
     std::string_view m_description;
     CommandFunction m_function;
     size_t m_requiredArguments;
 };
 
 using PrintFunction = std::function<void(const char*)>;
-using FunctionArray = std::array<Function, YASH_FUNCTION_ARRAY_SIZE>;
-using FunctionArrayCallback = std::function<const FunctionArray&()>;
+using CommandArray = std::array<Command, YASH_COMMAND_ARRAY_SIZE>;
+using CommandArrayCallback = std::function<const CommandArray&()>;
 
 class Yash {
 public:
@@ -71,9 +69,9 @@ public:
     /// @param prompt A string with the name to be used
     void setPrompt(const std::string& prompt) { m_prompt = prompt; }
 
-    /// @brief Sets the function array callback
-    /// @param prompt A FunctionArrayCallback with the static funcion array
-    void setFunctionArrayCallback(FunctionArrayCallback callback) { m_functionArrayCallback = callback; }
+    /// @brief Sets the command array callback
+    /// @param prompt A CommandArrayCallback with the static funcion array
+    void setCommandArrayCallback(CommandArrayCallback callback) { m_CommandArrayCallback = callback; }
 
     /// @brief Sets a received character on the shell
     /// @param character The character to be set
@@ -302,21 +300,21 @@ private:
 
     void runCommand()
     {
-        if (!m_functionArrayCallback)
+        if (!m_CommandArrayCallback)
             return;
 
         std::vector<std::string> arguments;
-        for (const auto& function : m_functionArrayCallback()) {
-            if (!m_command.compare(0, function.m_command.size(), function.m_command)) {
-                auto args = m_command.substr(function.m_command.size());
+        for (const auto& command : m_CommandArrayCallback()) {
+            if (!m_command.compare(0, command.m_name.size(), command.m_name)) {
+                auto args = m_command.substr(command.m_name.size());
                 char *token = std::strtok(args.data(), s_commandDelimiter);
                 while (token) {
                     arguments.emplace_back(token);
                     token = std::strtok(nullptr, s_commandDelimiter);
                 }
 
-                if (arguments.size() >= function.m_requiredArguments) {
-                    function.m_function(arguments);
+                if (arguments.size() >= command.m_requiredArguments) {
+                    command.m_function(arguments);
                     print(m_prompt.c_str());
                     return;
                 }
@@ -351,13 +349,13 @@ private:
 
     void printDescriptions(bool autoComplete = false)
     {
-        if (!m_functionArrayCallback)
+        if (!m_CommandArrayCallback)
             return;
 
         std::map<std::string, std::string> descriptions;
-        for (const auto& function : m_functionArrayCallback()) {
-            if (!m_command.empty() && !std::memcmp(function.m_command.data(), m_command.data(), std::min(m_command.size(), function.m_command.size())))
-                descriptions.emplace(function.m_command, function.m_description);
+        for (const auto& command : m_CommandArrayCallback()) {
+            if (!m_command.empty() && !std::memcmp(command.m_name.data(), m_command.data(), std::min(m_command.size(), command.m_name.size())))
+                descriptions.emplace(command.m_name, command.m_description);
         }
 
         if ((descriptions.size() == 1) && autoComplete) {
@@ -368,16 +366,16 @@ private:
             }
         } else {
             if (descriptions.empty()) {
-                for (const auto& function : m_functionArrayCallback()) {
-                    auto position = function.m_command.find_first_of(s_commandDelimiter);
+                for (const auto& command : m_CommandArrayCallback()) {
+                    auto position = command.m_name.find_first_of(s_commandDelimiter);
                     if (position != std::string::npos) {
-                        auto firstCommandView = function.m_command.substr(0, position);
+                        auto firstCommandView = command.m_name.substr(0, position);
                         std::string firstCommand = {firstCommandView.begin(), firstCommandView.end()};
                         firstCommand[0] = toupper(firstCommand[0]);
-                        descriptions.emplace(function.m_command.substr(0, position), firstCommand + " commands");
+                        descriptions.emplace(command.m_name.substr(0, position), firstCommand + " commands");
                     }
                     else
-                        descriptions.emplace(function.m_command, function.m_description);
+                        descriptions.emplace(command.m_name, command.m_description);
                 }
             } else {
                 std::string firstCommand;
@@ -407,7 +405,7 @@ private:
     static constexpr const char* s_moveCursorForward = "\033[1C";
     static constexpr const char* s_moveCursorBackward = "\033[1D";
     static constexpr const char* s_commandDelimiter = " ";
-    FunctionArrayCallback m_functionArrayCallback;
+    CommandArrayCallback m_CommandArrayCallback;
     std::vector<std::string> m_commands;
     std::vector<std::string>::const_iterator m_commandsIndex;
     size_t m_pos{0};
