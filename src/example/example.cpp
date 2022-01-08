@@ -28,10 +28,9 @@ int main()
             { "info", "System info", [](const auto& args) { info(args); }, 0 } }
     };
 
-    Yash::Yash<std::size(commands)> yash;
+    Yash::Yash<std::size(commands)> yash(commands);
     yash.setPrint([&](const char* str) { printf("%s", str); });
     yash.setPrompt("$ ");
-    yash.setCommandsCallback([]() -> const auto& { return commands; });
 
     while (true)
         yash.setCharacter(getch());

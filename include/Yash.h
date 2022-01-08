@@ -27,9 +27,10 @@ struct Command {
 template <size_t TCommandArraySize>
 class Yash {
 public:
-    Yash(size_t historySize = 10)
-        : m_historySize(historySize)
-        , m_commandsIndex(m_commands.begin())
+    Yash(const std::array<Command, TCommandArraySize>& commands, size_t commandHistorySize = 10)
+        : m_commands(commands)
+        , m_commandHistoryIndex(m_commandHistory.begin())
+        , m_commandHistorySize(commandHistorySize)
     {
     }
 
@@ -54,13 +55,6 @@ public:
     /// @param prompt A string with the name to be used
     void setPrompt(const std::string& prompt) { m_prompt = prompt; }
 
-    /// @brief Sets the commands callback
-    /// @param callback A commands callback with a reference to the command array
-    void setCommandsCallback(std::function<const std::array<Command, TCommandArraySize>&()> callback)
-    {
-        m_commandsCallback = std::move(callback);
-    }
-
     /// @brief Sets a received character on the shell
     /// @param character The character to be set
     void setCharacter(char character)
@@ -71,13 +65,13 @@ public:
             print("\r\n");
             if (!m_command.empty()) {
                 runCommand();
-                m_commands.push_back(m_command);
+                m_commandHistory.push_back(m_command);
 
-                if (m_commands.size() > m_historySize)
-                    m_commands.erase(m_commands.begin());
+                if (m_commandHistory.size() > m_commandHistorySize)
+                    m_commandHistory.erase(m_commandHistory.begin());
 
                 m_command.clear();
-                m_commandsIndex = m_commands.end();
+                m_commandHistoryIndex = m_commandHistory.end();
             } else
                 print(m_prompt.c_str());
             m_position = m_command.length();
@@ -129,17 +123,17 @@ public:
                         if (m_ctrlCharacter.length() == s_ctrlCharacters[i].length()) {
                             switch (i) {
                             case KeyUp:
-                                if (m_commandsIndex != m_commands.begin()) {
-                                    m_command = *--m_commandsIndex;
+                                if (m_commandHistoryIndex != m_commandHistory.begin()) {
+                                    m_command = *--m_commandHistoryIndex;
                                     printCommand();
                                     m_position = m_command.length();
                                 }
                                 break;
                             case KeyDown:
-                                if (m_commandsIndex != m_commands.end()) {
-                                    ++m_commandsIndex;
-                                    if (m_commandsIndex != m_commands.end()) {
-                                        m_command = *m_commandsIndex;
+                                if (m_commandHistoryIndex != m_commandHistory.end()) {
+                                    ++m_commandHistoryIndex;
+                                    if (m_commandHistoryIndex != m_commandHistory.end()) {
+                                        m_command = *m_commandHistoryIndex;
                                     } else {
                                         m_command.clear();
                                     }
@@ -281,11 +275,8 @@ private:
 
     void runCommand()
     {
-        if (!m_commandsCallback)
-            return;
-
         std::vector<std::string> arguments;
-        for (const auto& command : m_commandsCallback()) {
+        for (const auto& command : m_commands) {
             if (!m_command.compare(0, command.name.size(), command.name)) {
                 auto args = m_command.substr(command.name.size());
                 char* token = std::strtok(args.data(), s_commandDelimiter);
@@ -330,11 +321,8 @@ private:
 
     void printDescriptions(bool autoComplete = false)
     {
-        if (!m_commandsCallback)
-            return;
-
         std::map<std::string, std::string> descriptions;
-        for (const auto& command : m_commandsCallback()) {
+        for (const auto& command : m_commands) {
             if (!m_command.empty() && !std::memcmp(command.name.data(), m_command.data(), std::min(m_command.size(), command.name.size())))
                 descriptions.emplace(command.name, command.description);
         }
@@ -347,7 +335,7 @@ private:
             }
         } else {
             if (descriptions.empty()) {
-                for (const auto& command : m_commandsCallback()) {
+                for (const auto& command : m_commands) {
                     auto position = command.name.find_first_of(s_commandDelimiter);
                     if (position != std::string::npos) {
                         auto firstCommandView = command.name.substr(0, position);
@@ -387,16 +375,16 @@ private:
     static constexpr const char* s_commandDelimiter = " ";
     static constexpr std::array<std::string_view, 9> s_ctrlCharacters { { { "A" }, { "B" }, { "C" }, { "D" }, { "1~" }, { "3~" }, { "4~" }, { "1;5C" }, { "1;5D" } } };
 
-    size_t m_position { 0 };
-    size_t m_historySize { 0 };
     CtrlState m_ctrlState { CtrlState::None };
-    std::function<const std::array<Command, TCommandArraySize>&()> m_commandsCallback;
+    const std::array<Command, TCommandArraySize>& m_commands;
     std::function<void(const char*)> m_printFunction;
-    std::vector<std::string> m_commands;
-    std::vector<std::string>::const_iterator m_commandsIndex;
+    std::vector<std::string> m_commandHistory;
+    std::vector<std::string>::const_iterator m_commandHistoryIndex;
     std::string m_command;
     std::string m_prompt;
     std::string m_ctrlCharacter;
+    size_t m_position { 0 };
+    size_t m_commandHistorySize { 0 };
 };
 
 } // namespace Yash
