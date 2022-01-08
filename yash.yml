@@ -18,12 +18,12 @@ config:
   # Explicitly set the number of columns
   # or use `auto` to take the current
   # number of columns of your shell
-  cols: auto
+  cols: 180
   
   # Explicitly set the number of rows
   # or use `auto` to take the current
   # number of rows of your shell
-  rows: auto
+  rows: 19
   
   # Amount of times to repeat GIF
   # If value is -1, play once
@@ -52,7 +52,6 @@ config:
     type: null
     title: null
     style:
-      border: 0px black solid
       backgroundColor: null
       # boxShadow: none
       # margin: 0px
@@ -150,4 +149,3 @@ records:
     content: "\e[2K\e[100D$ info "
   - delay: 846
     content: "\r\r\ninfo()\r\n$ "
-  - delay: 1287
