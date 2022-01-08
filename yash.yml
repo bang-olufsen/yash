@@ -6,10 +6,7 @@ config:
   # the default is bash for Linux
   # or powershell.exe for Windows
   command: bash -l
-  
-  # Specify the current working directory path
-  # the default is the current working directory path
-  cwd: /home/jfd/github/yash
+
   
   # Export additional ENV variables
   env:
@@ -90,7 +87,7 @@ config:
   # Theme
   theme:
     background: "transparent"
-    foreground: "#afafaf"
+    foreground: "#232628"
     cursor: "#c7c7c7"
     black: "#232628"
     red: "#fc4384"
