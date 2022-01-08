@@ -27,6 +27,9 @@ struct Command {
 template <size_t TCommandArraySize>
 class Yash {
 public:
+    /// @brief Constructor
+    /// @param commands A reference to an array with the commands (can be constexpr if wanted)
+    /// @param commandHistorySize The size of the command history (default 10)
     Yash(const std::array<Command, TCommandArraySize>& commands, size_t commandHistorySize = 10)
         : m_commands(commands)
         , m_commandHistoryIndex(m_commandHistory.begin())
@@ -38,10 +41,7 @@ public:
 
     /// @brief Sets the print function to be used
     /// @param print The print funcion to be used
-    void setPrint(std::function<void(const char*)> printFunction)
-    {
-        m_printFunction = std::move(printFunction);
-    }
+    void setPrint(std::function<void(const char*)> printFunction) { m_printFunction = std::move(printFunction); }
 
     /// @brief Prints the specified text using the print function
     /// @param text The text to be printed
@@ -122,14 +122,14 @@ public:
                     if (m_ctrlCharacter.compare(0, m_ctrlCharacter.length(), s_ctrlCharacters[i], 0, m_ctrlCharacter.length()) == 0) {
                         if (m_ctrlCharacter.length() == s_ctrlCharacters[i].length()) {
                             switch (i) {
-                            case KeyUp:
+                            case CharacterUp:
                                 if (m_commandHistoryIndex != m_commandHistory.begin()) {
                                     m_command = *--m_commandHistoryIndex;
                                     printCommand();
                                     m_position = m_command.length();
                                 }
                                 break;
-                            case KeyDown:
+                            case CharacterDown:
                                 if (m_commandHistoryIndex != m_commandHistory.end()) {
                                     ++m_commandHistoryIndex;
                                     if (m_commandHistoryIndex != m_commandHistory.end()) {
@@ -141,25 +141,25 @@ public:
                                     m_position = m_command.length();
                                 }
                                 break;
-                            case KeyRight:
+                            case CharacterRight:
                                 if (m_position != m_command.length()) {
                                     print(s_moveCursorForward);
                                     m_position++;
                                 }
                                 break;
-                            case KeyLeft:
+                            case CharacterLeft:
                                 if (m_position) {
                                     print(s_moveCursorBackward);
                                     m_position--;
                                 }
                                 break;
-                            case KeyHome:
+                            case CharacterHome:
                                 while (m_position) {
                                     print(s_moveCursorBackward);
                                     m_position--;
                                 }
                                 break;
-                            case KeyDelete:
+                            case CharacterDelete:
                                 if (m_position != m_command.length()) {
                                     m_command.erase(m_position, 1);
 
@@ -176,13 +176,13 @@ public:
                                         print(s_moveCursorBackward);
                                 }
                                 break;
-                            case KeyEnd:
+                            case CharacterEnd:
                                 while (m_position != m_command.length()) {
                                     print(s_moveCursorForward);
                                     m_position++;
                                 }
                                 break;
-                            case KeyCtrlRight:
+                            case CharacterCtrlRight:
                                 while (m_position != m_command.length() && m_command.at(m_position) == ' ') { // skip spaces until we find the first char
                                     print(s_moveCursorForward);
                                     m_position++;
@@ -192,7 +192,7 @@ public:
                                     m_position++;
                                 }
                                 break;
-                            case KeyCtrlLeft:
+                            case CharacterCtrlLeft:
                                 if (m_position && m_position == m_command.length()) { // step inside the m_command range
                                     print(s_moveCursorBackward);
                                     m_position--;
@@ -256,15 +256,15 @@ private:
     };
 
     enum CtrlCharacter {
-        KeyUp = 0,
-        KeyDown,
-        KeyRight,
-        KeyLeft,
-        KeyHome,
-        KeyDelete,
-        KeyEnd,
-        KeyCtrlRight,
-        KeyCtrlLeft
+        CharacterUp = 0,
+        CharacterDown,
+        CharacterRight,
+        CharacterLeft,
+        CharacterHome,
+        CharacterDelete,
+        CharacterEnd,
+        CharacterCtrlRight,
+        CharacterCtrlLeft
     };
 
     enum class CtrlState {

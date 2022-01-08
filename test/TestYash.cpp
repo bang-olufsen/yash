@@ -5,35 +5,21 @@
 #define private public
 #include "Yash.h"
 
+#define SetupHistoryPreconditions() \
+    MOCK_EXPECT(print); \
+    MOCK_EXPECT(i2c).once(); \
+    for (char& character : "i2c read 1 2 3\n"s) \
+        yash.setCharacter(character); \
+    MOCK_EXPECT(info).once(); \
+    for (char& character : "info\n"s) \
+        yash.setCharacter(character);
+
 using namespace std::string_literals;
 
 namespace {
-
 MOCK_FUNCTION(print, 1, void(const char*));
 MOCK_FUNCTION(i2c, 1, void(const std::vector<std::string>& args));
 MOCK_FUNCTION(info, 1, void(const std::vector<std::string>& args));
-
-static constexpr std::array<Yash::Command, 2> commands {
-    { { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
-    { "info", "System info", &info, 0 } }
-};
-
-static constexpr int commandHistorySize { 10 };
-
-#if 0
-void SetupHistoryPreconditions()
-{
-    MOCK_EXPECT(print);
-
-    MOCK_EXPECT(i2c).once();
-    for (char& character : "i2c read 1 2 3\n"s)
-        yash.setCharacter(character);
-
-    MOCK_EXPECT(info).once();
-    for (char& character : "info\n"s)
-        yash.setCharacter(character);
-}
-#endif
 
 constexpr const char *s_clearCharacter = "\033[1D \033[1D";
 constexpr const char *s_moveCursorForward = "\033[1C";
@@ -43,7 +29,13 @@ constexpr const char *s_moveCursorBackward = "\033[1D";
 
 TEST_CASE("Yash test")
 {
+    static constexpr std::array<Yash::Command, 2> commands {
+        { { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
+        { "info", "System info", &info, 0 } }
+    };
+
     std::string prompt = "$ ";
+    const int commandHistorySize { 10 };
     Yash::Yash<std::size(commands)> yash(commands, commandHistorySize);
 
     yash.setPrint(print);
@@ -184,7 +176,6 @@ TEST_CASE("Yash test")
             yash.setCharacter(character);
     }
 
-#if 0
     SECTION("Test setCharacter with up character input")
     {
         SetupHistoryPreconditions();
@@ -270,12 +261,12 @@ TEST_CASE("Yash test")
             yash.setCharacter(character);
 
         // Fill up the history queue so the i2c command overflows
-        for (auto i { 0 }; i < historySize; ++i) {
+        for (auto i { 0 }; i < commandHistorySize; ++i) {
             for (char& character : "foo\n"s)
                 yash.setCharacter(character);
         }
 
-        for (auto i { 0 }; i <= historySize; ++i)
+        for (auto i { 0 }; i <= commandHistorySize; ++i)
             yash.setCharacter(yash.Up);
         yash.setCharacter('\n');
     }
@@ -649,7 +640,7 @@ TEST_CASE("Yash test")
         yash.setCharacter('D');
         yash.setCharacter('\n');
     }
-#endif
+
     mock::verify();
     mock::reset();
 }
