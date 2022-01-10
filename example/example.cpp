@@ -6,24 +6,25 @@
 #include <cstdlib>
 
 
-void i2cRead(Yash::Arguments args) {
+void i2cRead(Yash::Arguments args)
+{
 
     printf("i2cRead(%s, %s, %s)\n",
-           std::next(args.begin(), 0)->c_str(),
-           std::next(args.begin(), 1)->c_str(),
-           std::next(args.begin(), 2)->c_str()
-    );
+        std::next(args.begin(), 0)->c_str(),
+        std::next(args.begin(), 1)->c_str(),
+        std::next(args.begin(), 2)->c_str());
 }
 
-void i2cWrite(Yash::Arguments args) {
+void i2cWrite(Yash::Arguments args)
+{
     printf("i2cWrite(%s, %s, %s)\n",
-           std::next(args.begin(), 0)->c_str(),
-           std::next(args.begin(), 1)->c_str(),
-           std::next(args.begin(), 2)->c_str()
-    );
+        std::next(args.begin(), 0)->c_str(),
+        std::next(args.begin(), 1)->c_str(),
+        std::next(args.begin(), 2)->c_str());
 }
 
-void info(Yash::Arguments) {
+void info(Yash::Arguments)
+{
     printf("info()\n");
 }
 

@@ -7,11 +7,11 @@
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <list>
 #include <map>
 #include <numeric>
 #include <string>
 #include <string_view>
-#include <list>
 
 namespace Yash {
 
