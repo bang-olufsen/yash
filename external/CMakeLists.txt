@@ -16,7 +16,7 @@ ExternalProject_Add(
 ExternalProject_Add(
     Catch2
     GIT_REPOSITORY https://github.com/catchorg/Catch2
-    GIT_TAG v2.13.4
+    GIT_TAG v2.13.7
     SOURCE_DIR ../src/external/Catch2
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
