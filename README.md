@@ -4,7 +4,7 @@
 
 Yash is a C++17 header-only minimal shell for embedded devices with support for command completion.
 
-![](https://raw.githubusercontent.com/bang-olufsen/yash/main/src/example/example.gif)
+![](https://raw.githubusercontent.com/bang-olufsen/yash/main/example/example.gif)
 
  It was created as a serial port shell but can be used for other interfaces as well by using `setPrint()`. The prompt can be customized with `setPrompt()` and commands are added as a std::array which can be constexpr to save memory. The command history size can be adjusted by the constructor (default 10). An example can be seen below (taken from `example/example.cpp` and what is demoed in the image above).
 
