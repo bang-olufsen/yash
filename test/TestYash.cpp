@@ -5,25 +5,25 @@
 #define private public
 #include "Yash.h"
 
-#define SetupHistoryPreconditions() \
-    MOCK_EXPECT(print); \
-    MOCK_EXPECT(i2c).once(); \
+#define SetupHistoryPreconditions()             \
+    MOCK_EXPECT(print);                         \
+    MOCK_EXPECT(i2c).once();                    \
     for (char& character : "i2c read 1 2 3\n"s) \
-        yash.setCharacter(character); \
-    MOCK_EXPECT(info).once(); \
-    for (char& character : "info\n"s) \
+        yash.setCharacter(character);           \
+    MOCK_EXPECT(info).once();                   \
+    for (char& character : "info\n"s)           \
         yash.setCharacter(character);
 
 using namespace std::string_literals;
 
 namespace {
 MOCK_FUNCTION(print, 1, void(const char*));
-MOCK_FUNCTION(i2c, 1, void(const std::vector<std::string>& args));
-MOCK_FUNCTION(info, 1, void(const std::vector<std::string>& args));
+MOCK_FUNCTION(i2c, 1, void(Yash::Arguments args));
+MOCK_FUNCTION(info, 1, void(Yash::Arguments args));
 
-constexpr const char *s_clearCharacter = "\033[1D \033[1D";
-constexpr const char *s_moveCursorForward = "\033[1C";
-constexpr const char *s_moveCursorBackward = "\033[1D";
+constexpr const char* s_clearCharacter = "\033[1D \033[1D";
+constexpr const char* s_moveCursorForward = "\033[1C";
+constexpr const char* s_moveCursorBackward = "\033[1D";
 } // namespace
 
 
@@ -31,7 +31,7 @@ TEST_CASE("Yash test")
 {
     static constexpr std::array<Yash::Command, 2> commands {
         { { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
-        { "info", "System info", &info, 0 } }
+            { "info", "System info", &info, 0 } }
     };
 
     std::string prompt = "$ ";
@@ -128,7 +128,7 @@ TEST_CASE("Yash test")
     {
         std::string testCommand = "i2c read 1 2 3\n";
 
-        MOCK_EXPECT(i2c).once().with(std::vector<std::string> { "1", "2", "3" });
+        MOCK_EXPECT(i2c).once().with(std::list<std::string> { "1", "2", "3" });
         MOCK_EXPECT(print);
 
         for (char& character : testCommand)
@@ -142,7 +142,7 @@ TEST_CASE("Yash test")
             "i2c read 1 2 3 \n",
             "i2c read 1 2 3  \n") };
 
-        MOCK_EXPECT(i2c).once().with(std::vector<std::string> { "1", "2", "3" });
+        MOCK_EXPECT(i2c).once().with(std::list<std::string> { "1", "2", "3" });
         MOCK_EXPECT(print);
 
         for (char& character : testCommand)

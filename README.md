@@ -11,17 +11,24 @@ Yash is a C++17 header-only minimal shell for embedded devices with support for 
 ```cpp
 #include <Yash.h>
 
-void i2cRead(const std::vector<std::string>& args)
+void i2cRead(Yash::Arguments args)
 {
-    printf("i2cRead(%s, %s, %s)\n", args.at(0).c_str(), args.at(1).c_str(), args.at(2).c_str());
+
+    printf("i2cRead(%s, %s, %s)\n",
+        std::next(args.begin(), 0)->c_str(),
+        std::next(args.begin(), 1)->c_str(),
+        std::next(args.begin(), 2)->c_str());
 }
 
-void i2cWrite(const std::vector<std::string>& args)
+void i2cWrite(Yash::Arguments args)
 {
-    printf("i2cWrite(%s, %s, %s)\n", args.at(0).c_str(), args.at(1).c_str(), args.at(2).c_str());
+    printf("i2cWrite(%s, %s, %s)\n",
+        std::next(args.begin(), 0)->c_str(),
+        std::next(args.begin(), 1)->c_str(),
+        std::next(args.begin(), 2)->c_str());
 }
 
-void info(const std::vector<std::string>&)
+void info(Yash::Arguments)
 {
     printf("info()\n");
 }

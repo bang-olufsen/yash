@@ -7,15 +7,16 @@
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <list>
 #include <map>
 #include <numeric>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace Yash {
 
-typedef void (*CommandFunction)(const std::vector<std::string>&);
+typedef const std::list<std::string>& Arguments;
+typedef void (*CommandFunction)(Yash::Arguments);
 
 struct Command {
     std::string_view name;
@@ -277,7 +278,7 @@ private:
 
     void runCommand()
     {
-        std::vector<std::string> arguments;
+        std::list<std::string> arguments;
         for (const auto& command : m_commands) {
             if (!m_command.compare(0, command.name.size(), command.name)) {
                 auto args = m_command.substr(command.name.size());
@@ -380,8 +381,8 @@ private:
     CtrlState m_ctrlState { CtrlState::None };
     const std::array<Command, TCommandArraySize>& m_commands;
     std::function<void(const char*)> m_printFunction;
-    std::vector<std::string> m_commandHistory;
-    std::vector<std::string>::const_iterator m_commandHistoryIndex;
+    std::list<std::string> m_commandHistory;
+    std::list<std::string>::const_iterator m_commandHistoryIndex;
     std::string m_command;
     std::string m_prompt;
     std::string m_ctrlCharacter;
