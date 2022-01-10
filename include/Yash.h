@@ -118,7 +118,7 @@ public:
         default:
             if (m_ctrlState == CtrlState::LeftBracket) {
                 m_ctrlCharacter += character;
-                for (uint8_t index = 0; index < s_ctrlCharacters.size(); ++index) {
+                for (size_t index = 0; index < s_ctrlCharacters.size(); ++index) {
                     if (m_ctrlCharacter.compare(0, m_ctrlCharacter.length(), s_ctrlCharacters[index], 0, m_ctrlCharacter.length()) == 0) {
                         if (m_ctrlCharacter.length() == s_ctrlCharacters[index].length()) {
                             switch (index) {
@@ -213,6 +213,8 @@ public:
                                     print(s_moveCursorForward);
                                     m_position++;
                                 }
+                                break;
+                            default:
                                 break;
                             }
                         } else
