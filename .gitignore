@@ -1,2 +1,5 @@
 .vscode/settings.json
 .build*
+.cache*
+compile_commands.json
+Testing*
