@@ -2,7 +2,7 @@
 
 [![build](https://github.com/bang-olufsen/yash/actions/workflows/build.yml/badge.svg)](https://github.com/bang-olufsen/yash/actions/workflows/build.yml) [![coveralls](https://coveralls.io/repos/github/bang-olufsen/yash/badge.svg?branch=main)](https://coveralls.io/github/bang-olufsen/yash?branch=main) [![codeql](https://github.com/bang-olufsen/yash/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/bang-olufsen/yash/actions/workflows/codeql-analysis.yml) [![lgtm](https://img.shields.io/lgtm/grade/cpp/g/bang-olufsen/yash.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bang-olufsen/yash/context:cpp) [![license](https://img.shields.io/badge/license-MIT_License-blue.svg?style=flat)](LICENSE)
 
-Yash is a C++17 header-only minimal shell for embedded devices with support for command completion.
+Yash is a C++20 header-only minimal shell for embedded devices with support for command completion.
 
 ![](https://raw.githubusercontent.com/bang-olufsen/yash/main/example/example.gif)
 
