@@ -30,13 +30,11 @@ constexpr const char* s_moveCursorBackward = "\033[1D";
 
 TEST_CASE("Yash test")
 {
-    static constexpr std::array<Yash::Command, 2> commands {
-        {
-            { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
-            { "info", "System info", &info, 0 },
-        }
-    };
     static constexpr Yash::Config config { .maxRequiredArgs = 3, .commandHistorySize = 10 };
+    static constexpr auto commands = std::to_array<Yash::Command>({
+        { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
+        { "info", "System info", &info, 0 },
+    });
 
     std::string prompt = "$ ";
     Yash::Yash<config, std::size(commands)> yash(commands);
