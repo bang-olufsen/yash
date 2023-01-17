@@ -2,33 +2,30 @@
 // SPDX-License-Identifier: MIT
 
 #include <Yash.h>
-#include <con.h>
-#include <stdlib.h>
 
-void i2cRead(const std::vector<std::string>& args)
+void i2c(const std::string_view command, Yash::CommandArgs args)
 {
-    printf("i2cRead(%s, %s, %s)\n", args.at(0).c_str(), args.at(1).c_str(), args.at(2).c_str());
+    if (command == "read")
+        printf("i2cRead(%s, %s, %s)\n", args.at(0).data(), args.at(1).data(), args.at(2).data());
+    else if (command == "write")
+        printf("i2cWrite(%s, %s, %s)\n", args.at(0).data(), args.at(1).data(), args.at(2).data());
 }
 
-void i2cWrite(const std::vector<std::string>& args)
-{
-    printf("i2cWrite(%s, %s, %s)\n", args.at(0).c_str(), args.at(1).c_str(), args.at(2).c_str());
-}
-
-void info(const std::vector<std::string>&)
+void info(Yash::CommandArgs /* unused */)
 {
     printf("info()\n");
 }
 
 int main()
 {
-    static constexpr std::array<Yash::Command, 3> commands {
-        { { "i2c read", "I2C read <addr> <reg> <bytes>", [](const auto& args) { i2cRead(args); }, 3 },
-            { "i2c write", "I2C write <addr> <reg> <value>", [](const auto& args) { i2cWrite(args); }, 3 },
-            { "info", "System info", [](const auto& args) { info(args); }, 0 } }
-    };
+    static constexpr Yash::Config config { .maxRequiredArgs = 3, .commandHistorySize = 10 };
+    static constexpr auto commands = std::to_array<Yash::Command>({
+        { "i2c read", "I2C read <addr> <reg> <bytes>", [](Yash::CommandArgs args) { i2c("read", args); }, 3 },
+        { "i2c write", "I2C write <addr> <reg> <value>", [](Yash::Commands args) { i2c("write", args); }, 3 },
+        { "info", "System info", [](const auto args) { info(args); }, 0 }, // OR auto if preffered
+    });
 
-    Yash::Yash<std::size(commands)> yash(commands);
+    Yash::Yash<config, std::size(commands)> yash(commands);
     yash.setPrint([&](const char* str) { printf("%s", str); });
     yash.setPrompt("$ ");
 
