@@ -5,38 +5,41 @@
 #define private public
 #include "Yash.h"
 
-#define SetupHistoryPreconditions() \
-    MOCK_EXPECT(print); \
-    MOCK_EXPECT(i2c).once(); \
+#define SetupHistoryPreconditions()             \
+    MOCK_EXPECT(print);                         \
+    MOCK_EXPECT(i2c).once();                    \
     for (char& character : "i2c read 1 2 3\n"s) \
-        yash.setCharacter(character); \
-    MOCK_EXPECT(info).once(); \
-    for (char& character : "info\n"s) \
+        yash.setCharacter(character);           \
+    MOCK_EXPECT(info).once();                   \
+    for (char& character : "info\n"s)           \
         yash.setCharacter(character);
 
 using namespace std::string_literals;
 
 namespace {
-MOCK_FUNCTION(print, 1, void(const char*));
-MOCK_FUNCTION(i2c, 1, void(const std::vector<std::string>& args));
-MOCK_FUNCTION(info, 1, void(const std::vector<std::string>& args));
 
-constexpr const char *s_clearCharacter = "\033[1D \033[1D";
-constexpr const char *s_moveCursorForward = "\033[1C";
-constexpr const char *s_moveCursorBackward = "\033[1D";
+MOCK_FUNCTION(print, 1, void(const char*));
+MOCK_FUNCTION(i2c, 1, void(Yash::CommandArgs));
+MOCK_FUNCTION(info, 1, void(Yash::CommandArgs));
+
+constexpr const char* s_clearCharacter = "\033[1D \033[1D";
+constexpr const char* s_moveCursorForward = "\033[1C";
+constexpr const char* s_moveCursorBackward = "\033[1D";
 } // namespace
 
 
 TEST_CASE("Yash test")
 {
     static constexpr std::array<Yash::Command, 2> commands {
-        { { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
-        { "info", "System info", &info, 0 } }
+        {
+            { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
+            { "info", "System info", &info, 0 },
+        }
     };
+    static constexpr Yash::Config config { .maxRequiredArgs = 3, .commandHistorySize = 10 };
 
     std::string prompt = "$ ";
-    const int commandHistorySize { 10 };
-    Yash::Yash<std::size(commands)> yash(commands, commandHistorySize);
+    Yash::Yash<config, std::size(commands)> yash(commands);
 
     yash.setPrint(print);
     yash.setPrompt(prompt);
@@ -126,9 +129,13 @@ TEST_CASE("Yash test")
 
     SECTION("Test setCharacter function with 'i2c read 1 2 3' input")
     {
+        std::vector<std::string> result { "1", "2", "3" };
         std::string testCommand = "i2c read 1 2 3\n";
 
-        MOCK_EXPECT(i2c).once().with(std::vector<std::string> { "1", "2", "3" });
+        MOCK_EXPECT(i2c).once().calls([&result](Yash::CommandArgs args) {
+            CHECK(args.size() == result.size());
+            CHECK(std::equal(args.begin(), args.end(), result.begin()));
+        });
         MOCK_EXPECT(print);
 
         for (char& character : testCommand)
@@ -137,12 +144,16 @@ TEST_CASE("Yash test")
 
     SECTION("Test setCharacter function with 'i2c read 1 2 3' input")
     {
+        std::vector<std::string> result { "1", "2", "3" };
         std::string testCommand { GENERATE(as<std::string>(),
             "i2c read 1 2 3\n",
             "i2c read 1 2 3 \n",
             "i2c read 1 2 3  \n") };
 
-        MOCK_EXPECT(i2c).once().with(std::vector<std::string> { "1", "2", "3" });
+        MOCK_EXPECT(i2c).once().calls([&result](Yash::CommandArgs args) {
+            CHECK(args.size() == result.size());
+            CHECK(std::equal(args.begin(), args.end(), result.begin()));
+        });
         MOCK_EXPECT(print);
 
         for (char& character : testCommand)
@@ -170,6 +181,32 @@ TEST_CASE("Yash test")
 
         // Expect the i2c function to be called as the character 1 will be deleted
         MOCK_EXPECT(i2c);
+        MOCK_EXPECT(print);
+
+        for (char& character : testCommand)
+            yash.setCharacter(character);
+    }
+
+    SECTION("Test setCharacter function with too many arguments 'i2c read 1 2 3 4 5' input")
+    {
+        std::vector<std::string> result { "1", "2", "3" };
+        std::string testCommand = "i2c read 1 2 3 4 5\n";
+
+        MOCK_EXPECT(i2c).once().calls([&result](Yash::CommandArgs args) {
+            CHECK(args.size() == result.size());
+            CHECK(std::equal(args.begin(), args.end(), result.begin()));
+        });
+        MOCK_EXPECT(print);
+
+        for (char& character : testCommand)
+            yash.setCharacter(character);
+    }
+
+    SECTION("Test setCharacter function with too few arguments 'i2c read 1 2' input")
+    {
+        std::string testCommand = "i2c read 1 2\n";
+
+        MOCK_EXPECT(i2c).never();
         MOCK_EXPECT(print);
 
         for (char& character : testCommand)
@@ -261,12 +298,12 @@ TEST_CASE("Yash test")
             yash.setCharacter(character);
 
         // Fill up the history queue so the i2c command overflows
-        for (auto i { 0 }; i < commandHistorySize; ++i) {
+        for (size_t i { 0 }; i < config.commandHistorySize; ++i) {
             for (char& character : "foo\n"s)
                 yash.setCharacter(character);
         }
 
-        for (auto i { 0 }; i <= commandHistorySize; ++i)
+        for (size_t i { 0 }; i <= config.commandHistorySize; ++i)
             yash.setCharacter(yash.Up);
         yash.setCharacter('\n');
     }

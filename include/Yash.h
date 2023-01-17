@@ -9,31 +9,38 @@
 #include <functional>
 #include <map>
 #include <numeric>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace Yash {
 
-typedef void (*CommandFunction)(const std::vector<std::string>&);
+using CommandArgs = const std::span<const std::string_view>;
+typedef void (*CommandFunction)(CommandArgs);
 
 struct Command {
-    std::string_view name;
-    std::string_view description;
-    CommandFunction function;
-    size_t requiredArguments;
+    const std::string_view name;
+    const std::string_view description;
+    const CommandFunction function;
+    const size_t requiredArguments;
 };
 
-template <size_t TCommandArraySize>
+struct Config {
+    const size_t maxRequiredArgs; // The maximum amount of arguments provided in a callback
+    const size_t commandHistorySize;
+};
+
+template <Config TConfig, size_t TCommandArraySize>
 class Yash {
 public:
     /// @brief Constructor
     /// @param commands A reference to an array with the commands (can be constexpr if wanted)
     /// @param commandHistorySize The size of the command history (default 10)
-    Yash(const std::array<Command, TCommandArraySize>& commands, size_t commandHistorySize = 10)
+    constexpr Yash(const std::array<Command, TCommandArraySize>& commands)
         : m_commands(commands)
         , m_commandHistoryIndex(m_commandHistory.begin())
-        , m_commandHistorySize(commandHistorySize)
+        , m_commandHistorySize(TConfig.commandHistorySize)
     {
     }
 
@@ -277,18 +284,22 @@ private:
 
     void runCommand()
     {
-        std::vector<std::string> arguments;
         for (const auto& command : m_commands) {
+            auto argItr = m_commandArgs.begin();
+
             if (!m_command.compare(0, command.name.size(), command.name)) {
                 auto args = m_command.substr(command.name.size());
                 char* token = std::strtok(args.data(), s_commandDelimiter);
                 while (token) {
-                    arguments.emplace_back(token);
+                    *argItr++ = token;
                     token = std::strtok(nullptr, s_commandDelimiter);
+                    if (argItr == m_commandArgs.end())
+                        break;
                 }
 
-                if (arguments.size() >= command.requiredArguments) {
-                    command.function(arguments);
+                size_t argsSize = std::distance(m_commandArgs.begin(), argItr);
+                if (argsSize >= command.requiredArguments) {
+                    command.function(std::span { m_commandArgs.begin(), argItr });
                     print(m_prompt.c_str());
                     return;
                 }
@@ -379,6 +390,7 @@ private:
 
     CtrlState m_ctrlState { CtrlState::None };
     const std::array<Command, TCommandArraySize>& m_commands;
+    std::array<std::string_view, TConfig.maxRequiredArgs> m_commandArgs;
     std::function<void(const char*)> m_printFunction;
     std::vector<std::string> m_commandHistory;
     std::vector<std::string>::const_iterator m_commandHistoryIndex;
