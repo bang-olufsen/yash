@@ -31,13 +31,15 @@ struct Config {
     const size_t commandHistorySize;
 };
 
-template <Config TConfig, size_t TCommandArraySize>
+using CommandSpan = const std::span<const Command>;
+
+template <Config TConfig>
 class Yash {
 public:
     /// @brief Constructor
     /// @param commands A reference to an array with the commands (can be constexpr if wanted)
     /// @param commandHistorySize The size of the command history (default 10)
-    constexpr Yash(const std::array<Command, TCommandArraySize>& commands)
+    constexpr Yash(CommandSpan commands)
         : m_commands(commands)
         , m_commandHistoryIndex(m_commandHistory.begin())
         , m_commandHistorySize(TConfig.commandHistorySize)
@@ -389,7 +391,7 @@ private:
     static constexpr std::array<std::string_view, 9> s_ctrlCharacters { { { "A" }, { "B" }, { "C" }, { "D" }, { "1~" }, { "3~" }, { "4~" }, { "1;5C" }, { "1;5D" } } };
 
     CtrlState m_ctrlState { CtrlState::None };
-    const std::array<Command, TCommandArraySize>& m_commands;
+    CommandSpan m_commands;
     std::array<std::string_view, TConfig.maxRequiredArgs> m_commandArgs;
     std::function<void(const char*)> m_printFunction;
     std::vector<std::string> m_commandHistory;
