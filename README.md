@@ -33,7 +33,7 @@ int main()
         { "info", "System info", [](const auto args) { info(args); }, 0 }, // OR auto if preffered
     });
 
-    Yash::Yash<config, std::size(commands)> yash(commands);
+    Yash::Yash<config> yash(commands);
     yash.setPrint([&](const char* str) { printf("%s", str); });
     yash.setPrompt("$ ");
 

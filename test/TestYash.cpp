@@ -37,7 +37,7 @@ TEST_CASE("Yash test")
     });
 
     std::string prompt = "$ ";
-    Yash::Yash<config, std::size(commands)> yash(commands);
+    Yash::Yash<config> yash(commands);
 
     yash.setPrint(print);
     yash.setPrompt(prompt);
