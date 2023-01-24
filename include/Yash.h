@@ -7,12 +7,12 @@
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <list>
 #include <map>
 #include <numeric>
 #include <span>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace Yash {
 
@@ -74,13 +74,16 @@ public:
             print("\r\n");
             if (!m_command.empty()) {
                 runCommand();
-                m_commandHistory.push_back(m_command);
 
-                if (m_commandHistory.size() > m_commandHistorySize)
-                    m_commandHistory.erase(m_commandHistory.begin());
+                // Only add to history if so is allowed
+                if (TConfig.commandHistorySize > 0) {
+                    if (m_commandHistory.size() >= m_commandHistorySize)
+                        m_commandHistory.erase(m_commandHistory.begin());
 
-                m_command.clear();
-                m_commandHistoryIndex = m_commandHistory.end();
+                    m_commandHistory.push_back(m_command);
+                    m_command.clear();
+                    m_commandHistoryIndex = m_commandHistory.end();
+                }
             } else
                 print(m_prompt.c_str());
             m_position = m_command.length();
@@ -394,10 +397,10 @@ private:
     CommandSpan m_commands;
     std::array<std::string_view, TConfig.maxRequiredArgs> m_commandArgs;
     std::function<void(const char*)> m_printFunction;
-    std::vector<std::string> m_commandHistory;
-    std::vector<std::string>::const_iterator m_commandHistoryIndex;
+    std::list<std::string> m_commandHistory;
+    std::list<std::string>::const_iterator m_commandHistoryIndex;
     std::string m_command;
-    std::string m_prompt;
+    std::string m_prompt { "Yash$ " };
     std::string m_ctrlCharacter;
     size_t m_position { 0 };
     size_t m_commandHistorySize { 0 };
