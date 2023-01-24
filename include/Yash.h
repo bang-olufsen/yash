@@ -8,7 +8,6 @@
 #include <cstring>
 #include <functional>
 #include <list>
-#include <map>
 #include <numeric>
 #include <span>
 #include <string>
@@ -43,6 +42,10 @@ public:
         : m_commands(commands)
         , m_commandHistoryIndex(m_commandHistory.begin())
         , m_commandHistorySize(TConfig.commandHistorySize)
+        , m_allCommandsSizeAlignment(std::accumulate(commands.begin(), commands.end(), 0, [](size_t max, const auto& cmd) {
+            std::string_view commandNameSub = cmd.name.substr(0, cmd.name.find_first_of(s_commandDelimiter));
+            return std::max(max, commandNameSub.size());
+        }))
     {
     }
 
@@ -72,7 +75,7 @@ public:
         case '\n':
         case '\r':
             print("\r\n");
-            if (!m_command.empty()) {
+            if (!m_inputCommand.empty()) {
                 runCommand();
 
                 // Only add to history if so is allowed
@@ -80,45 +83,45 @@ public:
                     if (m_commandHistory.size() >= m_commandHistorySize)
                         m_commandHistory.erase(m_commandHistory.begin());
 
-                    m_commandHistory.push_back(m_command);
-                    m_command.clear();
+                    m_commandHistory.push_back(m_inputCommand);
+                    m_inputCommand.clear();
                     m_commandHistoryIndex = m_commandHistory.end();
                 }
             } else
                 print(m_prompt.c_str());
-            m_position = m_command.length();
+            m_position = m_inputCommand.length();
             break;
         case EndOfText:
-            m_command.clear();
-            printCommand();
-            m_position = m_command.length();
+            m_inputCommand.clear();
+            printInputCommand();
+            m_position = m_inputCommand.length();
             break;
         case Del:
         case Backspace:
-            if (!m_command.empty()) {
-                if (m_position == m_command.length()) {
+            if (!m_inputCommand.empty()) {
+                if (m_position == m_inputCommand.length()) {
                     print(s_clearCharacter);
-                    m_command.erase(m_command.length() - 1);
-                    m_position = m_command.length();
+                    m_inputCommand.erase(m_inputCommand.length() - 1);
+                    m_position = m_inputCommand.length();
                 } else if (m_position) {
-                    m_command.erase(--m_position, 1);
+                    m_inputCommand.erase(--m_position, 1);
                     print(s_moveCursorBackward);
 
-                    for (size_t i = m_position; i < m_command.length(); i++)
-                        print(std::string(1, m_command.at(i)).c_str());
+                    for (size_t i = m_position; i < m_inputCommand.length(); i++)
+                        print(std::string(1, m_inputCommand.at(i)).c_str());
 
                     print(std::string(1, ' ').c_str());
                     print(s_clearCharacter); // clear unused char at the end
 
-                    for (size_t i = m_position; i < m_command.length(); i++)
+                    for (size_t i = m_position; i < m_inputCommand.length(); i++)
                         print(s_moveCursorBackward);
                 }
             }
             break;
         case Tab:
-            printDescriptions(true);
-            printCommand();
-            m_position = m_command.length();
+            printBasedOnInput(AutoCompletionType::Inline);
+            printInputCommand();
+            m_position = m_inputCommand.length();
             break;
         case Esc:
             m_ctrlState = CtrlState::Esc;
@@ -136,25 +139,25 @@ public:
                             switch (index) {
                             case CharacterUp:
                                 if (m_commandHistoryIndex != m_commandHistory.begin()) {
-                                    m_command = *--m_commandHistoryIndex;
-                                    printCommand();
-                                    m_position = m_command.length();
+                                    m_inputCommand = *--m_commandHistoryIndex;
+                                    printInputCommand();
+                                    m_position = m_inputCommand.length();
                                 }
                                 break;
                             case CharacterDown:
                                 if (m_commandHistoryIndex != m_commandHistory.end()) {
                                     ++m_commandHistoryIndex;
                                     if (m_commandHistoryIndex != m_commandHistory.end()) {
-                                        m_command = *m_commandHistoryIndex;
+                                        m_inputCommand = *m_commandHistoryIndex;
                                     } else {
-                                        m_command.clear();
+                                        m_inputCommand.clear();
                                     }
-                                    printCommand();
-                                    m_position = m_command.length();
+                                    printInputCommand();
+                                    m_position = m_inputCommand.length();
                                 }
                                 break;
                             case CharacterRight:
-                                if (m_position != m_command.length()) {
+                                if (m_position != m_inputCommand.length()) {
                                     print(s_moveCursorForward);
                                     m_position++;
                                 }
@@ -172,56 +175,56 @@ public:
                                 }
                                 break;
                             case CharacterDelete:
-                                if (m_position != m_command.length()) {
-                                    m_command.erase(m_position, 1);
+                                if (m_position != m_inputCommand.length()) {
+                                    m_inputCommand.erase(m_position, 1);
 
                                     print(std::string(1, ' ').c_str());
                                     print(s_clearCharacter); // clear deleted char
 
-                                    for (size_t i = m_position; i < m_command.length(); i++)
-                                        print(std::string(1, m_command.at(i)).c_str());
+                                    for (size_t i = m_position; i < m_inputCommand.length(); i++)
+                                        print(std::string(1, m_inputCommand.at(i)).c_str());
 
                                     print(std::string(1, ' ').c_str());
                                     print(s_clearCharacter); // clear unused char at the end
 
-                                    for (size_t i = m_position; i < m_command.length(); i++)
+                                    for (size_t i = m_position; i < m_inputCommand.length(); i++)
                                         print(s_moveCursorBackward);
                                 }
                                 break;
                             case CharacterEnd:
-                                while (m_position != m_command.length()) {
+                                while (m_position != m_inputCommand.length()) {
                                     print(s_moveCursorForward);
                                     m_position++;
                                 }
                                 break;
                             case CharacterCtrlRight:
-                                while (m_position != m_command.length() && m_command.at(m_position) == ' ') { // skip spaces until we find the first char
+                                while (m_position != m_inputCommand.length() && m_inputCommand.at(m_position) == ' ') { // skip spaces until we find the first char
                                     print(s_moveCursorForward);
                                     m_position++;
                                 }
-                                while (m_position != m_command.length() && m_command.at(m_position) != ' ') { // skip chars until we find the first space
+                                while (m_position != m_inputCommand.length() && m_inputCommand.at(m_position) != ' ') { // skip chars until we find the first space
                                     print(s_moveCursorForward);
                                     m_position++;
                                 }
                                 break;
                             case CharacterCtrlLeft:
-                                if (m_position && m_position == m_command.length()) { // step inside the m_command range
+                                if (m_position && m_position == m_inputCommand.length()) { // step inside the m_command range
                                     print(s_moveCursorBackward);
                                     m_position--;
                                 }
-                                if (m_position && m_position != m_command.length() && m_command.at(m_position) != ' ') { // skip the first char
+                                if (m_position && m_position != m_inputCommand.length() && m_inputCommand.at(m_position) != ' ') { // skip the first char
                                     print(s_moveCursorBackward);
                                     m_position--;
                                 }
-                                while (m_position && m_position != m_command.length() && m_command.at(m_position) == ' ') { // skip spaces until we find the first char
+                                while (m_position && m_position != m_inputCommand.length() && m_inputCommand.at(m_position) == ' ') { // skip spaces until we find the first char
                                     print(s_moveCursorBackward);
                                     m_position--;
                                 }
-                                while (m_position && m_position != m_command.length() && m_command.at(m_position) != ' ') { // skip chars until we find the first space
+                                while (m_position && m_position != m_inputCommand.length() && m_inputCommand.at(m_position) != ' ') { // skip chars until we find the first space
                                     print(s_moveCursorBackward);
                                     m_position--;
                                 }
-                                if (m_position && m_position != m_command.length() && m_command.at(m_position) == ' ') { // step forward if we hit a space in order to highlight a char
+                                if (m_position && m_position != m_inputCommand.length() && m_inputCommand.at(m_position) == ' ') { // step forward if we hit a space in order to highlight a char
                                     print(s_moveCursorForward);
                                     m_position++;
                                 }
@@ -235,17 +238,17 @@ public:
                 }
                 m_ctrlCharacter.clear();
             } else {
-                if (m_position == m_command.length()) {
+                if (m_position == m_inputCommand.length()) {
                     print(std::string(1, character).c_str());
-                    m_command += character;
-                    m_position = m_command.length();
+                    m_inputCommand += character;
+                    m_position = m_inputCommand.length();
                 } else {
                     print(std::string(1, character).c_str());
-                    m_command.insert(m_position++, 1, character);
+                    m_inputCommand.insert(m_position++, 1, character);
 
-                    for (size_t i = m_position; i < m_command.length(); i++)
-                        print(std::string(1, m_command.at(i)).c_str());
-                    for (size_t i = m_position; i < m_command.length(); i++)
+                    for (size_t i = m_position; i < m_inputCommand.length(); i++)
+                        print(std::string(1, m_inputCommand.at(i)).c_str());
+                    for (size_t i = m_position; i < m_inputCommand.length(); i++)
                         print(s_moveCursorBackward);
                 }
             }
@@ -292,8 +295,8 @@ private:
         for (const auto& command : m_commands) {
             auto argItr = m_commandArgs.begin();
 
-            if (!m_command.compare(0, command.name.size(), command.name)) {
-                auto args = m_command.substr(command.name.size());
+            if (!m_inputCommand.compare(0, command.name.size(), command.name)) {
+                auto args = m_inputCommand.substr(command.name.size());
                 char* token = std::strtok(args.data(), s_commandDelimiter);
                 while (token) {
                     *argItr++ = token;
@@ -311,78 +314,109 @@ private:
             }
         }
 
-        printDescriptions();
+        printBasedOnInput(AutoCompletionType::NewLine);
         print(m_prompt.c_str());
     }
 
-    void printCommand()
+    void printInputCommand()
     {
         print(s_clearLine);
         print(m_prompt.c_str());
-        print(m_command.c_str());
+        print(m_inputCommand.c_str());
     }
 
-    void printCommands(const std::map<std::string, std::string>& descriptions)
+    void printNameAndDescription(const std::string_view name, const std::string_view desc, size_t allignmentSize)
     {
-        size_t maxCommandSize { std::accumulate(begin(descriptions), end(descriptions), 0u, [](size_t max, const auto& desc) {
-            return std::max(max, desc.first.size());
-        }) };
+        print(name.data());
 
-        for (const auto& [command, description] : descriptions) {
-            std::string alignment((maxCommandSize + 2) - command.size(), ' ');
-            std::string line;
-            line.reserve(command.size() + alignment.size() + description.size() + 2);
-            line.append(command).append(alignment).append(description).append("\r\n");
-            print(line.c_str());
-        }
+        for (size_t start = 0; start < ((allignmentSize + 2) - name.size()); start++)
+            print(" ");
+
+        print(desc.data());
+        print("\r\n");
     }
 
-    void printDescriptions(bool autoComplete = false)
+    enum class AutoCompletionType {
+        Inline,
+        NewLine,
+    };
+
+    void printBasedOnInput(AutoCompletionType completionType)
     {
-        std::map<std::string, std::string> descriptions;
+        auto compareWithInputCommand = [this](const Command& command) {
+            return !m_inputCommand.empty() && !std::memcmp(command.name.data(), m_inputCommand.data(), std::min(m_inputCommand.size(), command.name.size()));
+        };
+
+        const bool inlineCompletion = completionType == AutoCompletionType::Inline;
+        size_t inputCommandCounter { 0 };
+        size_t alignmentSize { 0 };
+        std::string_view autoCompleteView;
+
         for (const auto& command : m_commands) {
-            if (!m_command.empty() && !std::memcmp(command.name.data(), m_command.data(), std::min(m_command.size(), command.name.size())))
-                descriptions.emplace(command.name, command.description);
+            if (compareWithInputCommand(command)) {
+                autoCompleteView = command.name;
+                alignmentSize = std::max(alignmentSize, command.name.size());
+                inputCommandCounter++;
+            }
         }
 
-        if ((descriptions.size() == 1) && autoComplete) {
-            auto completeCommand = descriptions.begin()->first + s_commandDelimiter;
-            if (completeCommand.size() > m_command.size()) {
-                m_command = completeCommand;
+        // Only one command with the given input - print auto completion for this one
+        if (inlineCompletion && inputCommandCounter == 1) {
+            auto completeCommand = std::string { autoCompleteView } + std::string { s_commandDelimiter };
+            if (completeCommand.size() > m_inputCommand.size()) {
+                m_inputCommand = completeCommand;
                 return;
             }
-        } else {
-            if (descriptions.empty()) {
-                for (const auto& command : m_commands) {
-                    auto position = command.name.find_first_of(s_commandDelimiter);
-                    if (position != std::string::npos) {
-                        auto firstCommandView = command.name.substr(0, position);
-                        std::string firstCommand = { firstCommandView.begin(), firstCommandView.end() };
-                        firstCommand[0] = toupper(firstCommand[0]);
-                        descriptions.emplace(command.name.substr(0, position), firstCommand + " commands");
-                    } else
-                        descriptions.emplace(command.name, command.description);
-                }
-            } else {
-                std::string firstCommand;
-                for (const auto& [command, function] : descriptions) {
-                    std::ignore = function;
-                    if (firstCommand.empty())
-                        firstCommand = command.substr(0, command.find_first_of(s_commandDelimiter));
-                    if (firstCommand != command.substr(0, command.find_first_of(s_commandDelimiter))) {
-                        firstCommand.clear();
-                        break;
-                    }
-                }
+        }
 
-                if (!firstCommand.empty() && (firstCommand.size() > m_command.size()))
-                    m_command = firstCommand + s_commandDelimiter;
+        // Go to next line to make it look like we're still inline
+        if (inlineCompletion)
+            print("\r\n");
+
+        // No commands matching the input was found so print all instead
+        if (inputCommandCounter == 0)
+            return printAllCommands();
+
+        // More than one command was found so print all descriptions matching instead
+        std::string_view lastCommandView;
+        size_t uniqueCounter { 0 };
+
+        for (const auto& command : m_commands) {
+            if (compareWithInputCommand(command)) {
+                printNameAndDescription(command.name, command.description, alignmentSize);
+                std::string_view commandNameSub = command.name.substr(0, command.name.find_first_of(s_commandDelimiter));
+                if (commandNameSub != lastCommandView) {
+                    lastCommandView = commandNameSub;
+                    uniqueCounter++;
+                }
             }
         }
 
-        if (autoComplete)
-            print("\r\n");
-        printCommands(descriptions);
+        // Auto complete if a single sub name was found
+        if (uniqueCounter == 1 && (lastCommandView.size() > m_inputCommand.size()))
+            m_inputCommand = std::string { lastCommandView } + std::string { s_commandDelimiter };
+    }
+
+
+    void printAllCommands()
+    {
+        std::optional<std::string_view> optView;
+        for (const auto& command : m_commands) {
+            auto position = command.name.find_first_of(s_commandDelimiter);
+            if (position != std::string::npos) {
+                auto subView = command.name.substr(0, position);
+                if (optView.has_value() && optView.value() == subView)
+                    continue;
+
+                auto firstCommandView = command.name.substr(0, position);
+                std::string firstCommand = std::string { firstCommandView.begin(), firstCommandView.end() } + " commands";
+                firstCommand[0] = toupper(firstCommand[0]);
+                printNameAndDescription(subView, firstCommand, m_allCommandsSizeAlignment);
+                optView = subView;
+            } else {
+                printNameAndDescription(command.name, command.description, m_allCommandsSizeAlignment);
+            }
+        }
     }
 
     static constexpr const char* s_clearLine = "\033[2K\033[100D";
@@ -399,11 +433,13 @@ private:
     std::function<void(const char*)> m_printFunction;
     std::list<std::string> m_commandHistory;
     std::list<std::string>::const_iterator m_commandHistoryIndex;
-    std::string m_command;
+    std::string m_inputCommand;
     std::string m_prompt { "Yash$ " };
     std::string m_ctrlCharacter;
     size_t m_position { 0 };
     size_t m_commandHistorySize { 0 };
+
+    const size_t m_allCommandsSizeAlignment;
 };
 
 } // namespace Yash
