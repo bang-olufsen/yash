@@ -10,6 +10,7 @@
 #include <list>
 #include <map>
 #include <numeric>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -322,31 +323,45 @@ private:
         print(m_command.c_str());
     }
 
-    void printCommands(const std::map<std::string, std::string>& descriptions)
+    using NameDescPair = std::pair<std::string_view, std::optional<std::string_view>>;
+    using DescList = std::list<NameDescPair>;
+
+    void printCommands(DescList& descriptions)
     {
         size_t maxCommandSize { std::accumulate(begin(descriptions), end(descriptions), 0u, [](size_t max, const auto& desc) {
             return std::max(max, desc.first.size());
         }) };
 
+        descriptions.sort([](const auto l, const auto r) { return l.first < r.first; });
+
         for (const auto& [command, description] : descriptions) {
             std::string alignment((maxCommandSize + 2) - command.size(), ' ');
-            std::string line;
-            line.reserve(command.size() + alignment.size() + description.size() + 2);
-            line.append(command).append(alignment).append(description).append("\r\n");
+            std::string desc, line;
+
+            if (description.has_value()) {
+                desc = description.value();
+            } else {
+                desc = std::string { command } + " commands";
+                desc[0] = toupper(desc[0]);
+            }
+
+            line.reserve(command.size() + alignment.size() + desc.size() + 2);
+            line.append(command).append(alignment).append(desc).append("\r\n");
             print(line.c_str());
         }
     }
 
     void printDescriptions(bool autoComplete = false)
     {
-        std::map<std::string, std::string> descriptions;
+        DescList descriptions;
+
         for (const auto& command : m_commands) {
             if (!m_command.empty() && !std::memcmp(command.name.data(), m_command.data(), std::min(m_command.size(), command.name.size())))
-                descriptions.emplace(command.name, command.description);
+                descriptions.emplace_back(command.name, command.description);
         }
 
         if ((descriptions.size() == 1) && autoComplete) {
-            auto completeCommand = descriptions.begin()->first + s_commandDelimiter;
+            auto completeCommand = std::string { descriptions.begin()->first } + s_commandDelimiter;
             if (completeCommand.size() > m_command.size()) {
                 m_command = completeCommand;
                 return;
@@ -356,12 +371,12 @@ private:
                 for (const auto& command : m_commands) {
                     auto position = command.name.find_first_of(s_commandDelimiter);
                     if (position != std::string::npos) {
-                        auto firstCommandView = command.name.substr(0, position);
-                        std::string firstCommand = { firstCommandView.begin(), firstCommandView.end() };
-                        firstCommand[0] = toupper(firstCommand[0]);
-                        descriptions.emplace(command.name.substr(0, position), firstCommand + " commands");
+                        descriptions.emplace_back(command.name.substr(0, position), std::nullopt);
                     } else
-                        descriptions.emplace(command.name, command.description);
+                        descriptions.emplace_back(command.name, command.description);
+
+                    // Remove duplicates if commands have been grouped
+                    descriptions.unique([](const auto l, const auto r) { return l.first == r.first; });
                 }
             } else {
                 std::string firstCommand;
@@ -382,6 +397,7 @@ private:
 
         if (autoComplete)
             print("\r\n");
+
         printCommands(descriptions);
     }
 
