@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <cstdarg>
-#include <cstdio>
 #include <cstring>
 #include <functional>
 #include <list>
