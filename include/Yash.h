@@ -227,8 +227,6 @@ public:
                                     m_position++;
                                 }
                                 break;
-                            default:
-                                break;
                             }
                         } else
                             return; // check the next ctrl character
