@@ -400,19 +400,24 @@ private:
 
     void printAllCommands()
     {
-        std::optional<std::string_view> optView;
+        std::list<std::string_view> groupedCommands;
         for (const auto& command : m_commands) {
+            // If command name contains a delimiter it means that we can group those
             auto position = command.name.find_first_of(s_commandDelimiter);
             if (position != std::string::npos) {
                 auto subView = command.name.substr(0, position);
-                if (optView.has_value() && optView.value() == subView)
+                if (std::find(groupedCommands.begin(), groupedCommands.end(), subView) != groupedCommands.end())
                     continue;
 
+                groupedCommands.push_back(subView);
+
+                // Group commands like: i2c  I2c commands
                 auto firstCommandView = command.name.substr(0, position);
                 std::string firstCommand = std::string { firstCommandView.begin(), firstCommandView.end() } + " commands";
                 firstCommand[0] = toupper(firstCommand[0]);
-                printNameAndDescription(subView, firstCommand, m_allCommandsSizeAlignment);
-                optView = subView;
+
+                // We have to do the string conversion as the subspan_view is not terminated
+                printNameAndDescription(std::string { subView }, firstCommand, m_allCommandsSizeAlignment);
             } else {
                 printNameAndDescription(command.name, command.description, m_allCommandsSizeAlignment);
             }
