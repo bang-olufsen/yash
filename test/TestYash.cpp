@@ -33,6 +33,7 @@ TEST_CASE("Yash test")
     static constexpr Yash::Config config { .maxRequiredArgs = 3, .commandHistorySize = 10 };
     static constexpr auto commands = std::to_array<Yash::Command>({
         { "i2c read", "I2C read <addr> <reg> <bytes>", &i2c, 3 },
+        { "i2c write", "I2C write <addr> <reg> <bytes>", &i2c, 3 },
         { "info", "System info", &info, 0 },
     });
 
@@ -58,30 +59,46 @@ TEST_CASE("Yash test")
     SECTION("Test setCharacter function with 'i2' input")
     {
         std::string testCommand = "i2\n";
-        std::string help = "i2c read  I2C read <addr> <reg> <bytes>\r\n";
 
-        MOCK_EXPECT(print).with("");
-        MOCK_EXPECT(print).with("i");
-        MOCK_EXPECT(print).with("2");
-        MOCK_EXPECT(print).with("\r\n");
+        mock::sequence seq;
+        MOCK_EXPECT(print).once().in(seq).with("i");
+        MOCK_EXPECT(print).once().in(seq).with("2");
+        MOCK_EXPECT(print).once().in(seq).with("\r\n");
+
+        // Print i2c read command + alignment
+        MOCK_EXPECT(print).once().in(seq).with(commands.at(0).name);
+        MOCK_EXPECT(print).exactly(3).in(seq).with(" ");
+        MOCK_EXPECT(print).once().in(seq).with(commands.at(0).description);
+        MOCK_EXPECT(print).once().in(seq).with("\r\n");
+
+        // Print i2c write command + alignment
+        MOCK_EXPECT(print).once().in(seq).with(commands.at(1).name);
+        MOCK_EXPECT(print).exactly(2).in(seq).with(" ");
+        MOCK_EXPECT(print).once().in(seq).with(commands.at(1).description);
+        MOCK_EXPECT(print).once().in(seq).with("\r\n");
+
         MOCK_EXPECT(print).with(prompt.c_str());
-        // Expect the help menu to be printed as the command is wrong
-        MOCK_EXPECT(print).with(help.c_str());
 
         for (char& character : testCommand)
             yash.setCharacter(character);
     }
 
-    SECTION("Test setCharacter function with 'i2' + TAB input")
+    SECTION("Test setCharacter function with 'i2c r' + TAB input")
     {
         mock::sequence seq;
         MOCK_EXPECT(print).once().in(seq).with("i");
         MOCK_EXPECT(print).once().in(seq).with("2");
+        MOCK_EXPECT(print).once().in(seq).with("c");
+        MOCK_EXPECT(print).once().in(seq).with(" ");
+        MOCK_EXPECT(print).once().in(seq).with("r");
         MOCK_EXPECT(print).once().in(seq).with(mock::any);
         MOCK_EXPECT(print).once().in(seq).with(prompt.c_str());
         MOCK_EXPECT(print).once().in(seq).with("i2c read ");
         yash.setCharacter('i');
         yash.setCharacter('2');
+        yash.setCharacter('c');
+        yash.setCharacter(' ');
+        yash.setCharacter('r');
         yash.setCharacter(yash.Tab);
     }
 
@@ -90,11 +107,29 @@ TEST_CASE("Yash test")
         mock::sequence seq;
         MOCK_EXPECT(print).once().in(seq).with("i");
         MOCK_EXPECT(print).once().in(seq).with(mock::any);
-        MOCK_EXPECT(print).once().in(seq).with("i2c read  I2C read <addr> <reg> <bytes>\r\n");
-        MOCK_EXPECT(print).once().in(seq).with("info      System info\r\n");
+
+        // Print i2c read command + alignment
+        MOCK_EXPECT(print).once().in(seq).with(commands.at(0).name);
+        MOCK_EXPECT(print).exactly(3).in(seq).with(" ");
+        MOCK_EXPECT(print).once().in(seq).with(commands.at(0).description);
+        MOCK_EXPECT(print).once().in(seq).with("\r\n");
+
+        // Print i2c write command + alignment
+        MOCK_EXPECT(print).once().in(seq).with(commands.at(1).name);
+        MOCK_EXPECT(print).exactly(2).in(seq).with(" ");
+        MOCK_EXPECT(print).once().in(seq).with(commands.at(1).description);
+        MOCK_EXPECT(print).once().in(seq).with("\r\n");
+
+        // Print info command + alignment
+        MOCK_EXPECT(print).once().in(seq).with(commands.at(2).name);
+        MOCK_EXPECT(print).exactly(7).in(seq).with(" ");
+        MOCK_EXPECT(print).once().in(seq).with(commands.at(2).description);
+        MOCK_EXPECT(print).once().in(seq).with("\r\n");
+
         MOCK_EXPECT(print).once().in(seq).with(mock::any);
         MOCK_EXPECT(print).once().in(seq).with(prompt.c_str());
         MOCK_EXPECT(print).once().in(seq).with("i");
+
         yash.setCharacter('i');
         yash.setCharacter(yash.Tab);
     }
@@ -167,10 +202,10 @@ TEST_CASE("Yash test")
         for (char& character : testCommand)
             yash.setCharacter(character);
 
-        CHECK_FALSE(yash.m_command.empty());
+        CHECK_FALSE(yash.m_inputCommand.empty());
 
         yash.setCharacter(yash.EndOfText);
-        CHECK(yash.m_command.empty());
+        CHECK(yash.m_inputCommand.empty());
     }
 
     SECTION("Test setCharacter function with 'i2c read 1 2 3' and backspace character input")
@@ -434,7 +469,7 @@ TEST_CASE("Yash test")
             mock::reset();
         }
 
-        CHECK(yash.m_command == "ic");
+        CHECK(yash.m_inputCommand == "ic");
     }
 
     SECTION("Test setCharacter function with 'i2c' with home and end character input to change cursor position")
