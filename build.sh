@@ -21,7 +21,7 @@ if [ "$1" = "coverage" ]; then
   ctest --verbose
   lcov -q -c -d . -o test.info 2>/dev/null
   lcov -q -a base.info -a test.info > total.info
-  lcov -q -r total.info "*usr/include/*" "*CMakeFiles*" "*Catch2*" "*turtle*" "*/test/*" "*src/*" -o coverage.info
+  lcov -q -r total.info "*usr/include/*" "*CMakeFiles*" "*Catch2*" "*turtle*" "*/test/*" -o coverage.info
   genhtml -o coverage coverage.info
   echo "Coverage report can be found in $(pwd)/coverage"
 fi
