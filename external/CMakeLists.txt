@@ -1,7 +1,7 @@
 project(external)
 
 include(ExternalProject)
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 
 ExternalProject_Add(
     turtle
